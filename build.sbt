@@ -139,8 +139,8 @@ lazy val packagingSettings = Seq(
 
   (packageName in Universal) := {
     import sys.process._
-    val shortCommit = ("./version commit" !!).trim
-    s"${packageName.value}-${version.value}-$shortCommit"
+    val tag = ("./version tag" !!).trim
+    s"${packageName.value}-$tag"
   },
 
   /* Universal packaging (docs) - http://sbt-native-packager.readthedocs.io/en/latest/formats/universal.html
