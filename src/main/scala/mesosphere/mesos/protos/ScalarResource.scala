@@ -10,4 +10,5 @@ object ScalarResource {
   def memory(value: Double, role: String = "*"): ScalarResource = ScalarResource(Resource.MEM, value, role)
   def disk(value: Double, role: String = "*"): ScalarResource = ScalarResource(Resource.DISK, value, role)
   def gpus(value: Double, role: String = "*"): ScalarResource = ScalarResource(Resource.GPUS, value, role)
+  def networkBandwidth(value: Double, role: String = "*"): ScalarResource = ScalarResource(Resource.NETWORK_BANDWIDTH, value, role)
 }

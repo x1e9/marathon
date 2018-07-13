@@ -75,7 +75,7 @@ class OfferConversionTest extends UnitTest {
       raml.attributes should have size 0
       raml.hostname should be (offer.getHostname)
       raml.id should be (offer.getId.getValue)
-      raml.resources should have size 5
+      raml.resources should have size 6
     }
   }
 }

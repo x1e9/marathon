@@ -180,7 +180,8 @@ object ResourceMatcher extends StrictLogging {
       Seq(
         scalarResourceMatch(Resource.CPUS, runSpec.resources.cpus, ScalarMatchResult.Scope.NoneDisk),
         scalarResourceMatch(Resource.MEM, runSpec.resources.mem, ScalarMatchResult.Scope.NoneDisk),
-        scalarResourceMatch(Resource.GPUS, runSpec.resources.gpus.toDouble, ScalarMatchResult.Scope.NoneDisk)) ++
+        scalarResourceMatch(Resource.GPUS, runSpec.resources.gpus.toDouble, ScalarMatchResult.Scope.NoneDisk),
+        scalarResourceMatch(Resource.NETWORK_BANDWIDTH, runSpec.resources.networkBandwidth.toDouble, ScalarMatchResult.Scope.NoneDisk)) ++
         diskMatch
     ).filter(_.requiredValue != 0)
 

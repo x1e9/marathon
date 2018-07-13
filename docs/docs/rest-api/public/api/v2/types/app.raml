@@ -237,6 +237,13 @@ types:
         default: 0
         description: |
           The amount of GPU cores that is needed for the application per instance.
+      networkBandwidth?:
+        type: integer
+        format: int32
+        minimum: 0
+        default: 0
+        description: |
+          The amount of network bandwidth in Mbps that is needed for the application per instance.
       ipAddress?:
         type: network.IpAddress
         (pragma.deprecated): Use `networks` instead.

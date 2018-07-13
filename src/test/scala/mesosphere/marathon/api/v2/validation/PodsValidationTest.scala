@@ -178,6 +178,13 @@ class PodsValidationTest extends UnitTest with ValidationTestLike with PodsValid
         "/" -> PodsValidationMessages.GpusPersistentVolumes)
     }
 
+    "be invalid if network_bandwidth change" in new Fixture {
+      val pod = validResidentPod.fromRaml
+      val to = pod.copy(containers = pod.containers.map(ct => ct.copy(resources = ct.resources.copy(networkBandwidth = 3))))
+      residentUpdateIsValid(pod)(to) should haveViolations(
+        "/" -> PodsValidationMessages.NetworkBandwidthPersistentVolumes)
+    }
+
     "be invalid with default upgrade strategy" in new Fixture {
       val pod = validResidentPod.fromRaml
       val to = pod.copy(upgradeStrategy = state.UpgradeStrategy.empty)

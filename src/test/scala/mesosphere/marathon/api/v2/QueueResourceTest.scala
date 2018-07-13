@@ -89,7 +89,7 @@ class QueueResourceTest extends UnitTest with JerseyTest {
       (jsonApp1 \ "processedOffersSummary" \ "processedOffersCount").as[Int] should be(3)
       (jsonApp1 \ "processedOffersSummary" \ "unusedOffersCount").as[Int] should be(1)
       (jsonApp1 \ "processedOffersSummary" \ "rejectSummaryLaunchAttempt" \ 4 \ "declined").as[Int] should be(3)
-      (jsonApp1 \ "processedOffersSummary" \ "rejectSummaryLaunchAttempt" \ 9 \ "declined").as[Int] should be(2)
+      (jsonApp1 \ "processedOffersSummary" \ "rejectSummaryLaunchAttempt" \ 10 \ "declined").as[Int] should be(2)
       val offer = (jsonApp1 \ "lastUnusedOffers").as[JsArray].value.head \ "offer"
       (offer \ "agentId").as[String] should be(noMatch.offer.getSlaveId.getValue)
       (offer \ "hostname").as[String] should be(noMatch.offer.getHostname)

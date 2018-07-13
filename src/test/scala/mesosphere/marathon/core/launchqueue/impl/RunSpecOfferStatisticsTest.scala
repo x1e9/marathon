@@ -15,21 +15,21 @@ class RunSpecOfferStatisticsTest extends UnitTest {
   "RunSpecOfferStatisticsTest" should {
     "Accumulate resource reasons for NoMatch with ResourceReasons" in {
       checkNoMatch(
-        reasons = Seq(InsufficientCpus, InsufficientGpus, InsufficientDisk, InsufficientPorts),
+        reasons = Seq(InsufficientCpus, InsufficientGpus, InsufficientDisk, InsufficientPorts, InsufficientNetworkBandwidth),
         expectedIncrements = Seq(InsufficientCpus)
       )
     }
 
     "Accumulate resource reasons for NoMatch with ResourceReasons and UnmatchedConstraint" in {
       checkNoMatch(
-        reasons = Seq(InsufficientCpus, InsufficientGpus, InsufficientDisk, UnfulfilledConstraint),
+        reasons = Seq(InsufficientCpus, InsufficientGpus, InsufficientDisk, InsufficientNetworkBandwidth, UnfulfilledConstraint),
         expectedIncrements = Seq(UnfulfilledConstraint)
       )
     }
 
     "Accumulate resource reasons for NoMatch with ResourceReasons and UnmatchedConstraint and UnmatchedRole" in {
       checkNoMatch(
-        reasons = Seq(InsufficientCpus, InsufficientGpus, InsufficientDisk, UnfulfilledRole, UnfulfilledConstraint),
+        reasons = Seq(InsufficientCpus, InsufficientGpus, InsufficientDisk, InsufficientNetworkBandwidth, UnfulfilledRole, UnfulfilledConstraint),
         expectedIncrements = Seq(UnfulfilledRole)
       )
     }

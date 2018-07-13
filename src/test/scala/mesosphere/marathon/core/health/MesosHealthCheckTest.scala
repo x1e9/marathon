@@ -873,7 +873,7 @@ class MesosHealthCheckTest extends UnitTest {
 
   def buildIfMatches(app: AppDefinition): Option[(MesosProtos.TaskInfo, NetworkInfo)] = {
     val offer = MarathonTestHelper.makeBasicOfferWithRole(
-      cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 32000, role = ResourceRole.Unreserved).build
+      cpus = 1.0, mem = 128.0, disk = 1000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 32000, role = ResourceRole.Unreserved).build
 
     val config = MarathonTestHelper.defaultConfig()
     val instanceId = Instance.Id.forRunSpec(app.id)

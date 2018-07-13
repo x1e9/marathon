@@ -64,7 +64,7 @@ object RunSpecOfferMatcher extends StrictLogging {
       logger.debug(
         s"Offer [${offer.getId.getValue}]. Insufficient resources for [${runSpec.id}] " +
           s"(need cpus=${runSpec.resources.cpus}, mem=${runSpec.resources.mem}, disk=${runSpec.resources.disk}, " +
-          s"gpus=${runSpec.resources.gpus}, $portsString, available in offer: " +
+          s"gpus=${runSpec.resources.gpus}, $portsString, network_bandwidth=${runSpec.resources.networkBandwidth} available in offer: " +
           s"[${TextFormat.shortDebugString(offer)}]"
       )
     }

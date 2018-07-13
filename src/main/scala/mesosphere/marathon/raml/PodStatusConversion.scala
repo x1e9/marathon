@@ -75,7 +75,7 @@ trait PodStatusConversion {
 
     val networkStatus: Seq[NetworkStatus] = networkStatuses(instance.tasksMap.values.to[Seq])
     val resources: Resources = containerStatus.flatMap(_.resources).foldLeft(PodDefinition.DefaultExecutorResources) { (all, res) =>
-      all.copy(cpus = all.cpus + res.cpus, mem = all.mem + res.mem, disk = all.disk + res.disk, gpus = all.gpus + res.gpus)
+      all.copy(cpus = all.cpus + res.cpus, mem = all.mem + res.mem, disk = all.disk + res.disk, gpus = all.gpus + res.gpus, networkBandwidth = all.networkBandwidth + res.networkBandwidth)
     }
 
     val localVolumes = instance.reservation.fold(Seq.empty[LocalVolumeId]) { reservation =>

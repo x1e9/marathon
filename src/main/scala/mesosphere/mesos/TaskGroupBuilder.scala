@@ -93,16 +93,19 @@ object TaskGroupBuilder extends StrictLogging {
     val mem = BigDecimal(pod.executorResources.mem) + pod.containers.map(c => BigDecimal(c.resources.mem)).sum
     val disk = BigDecimal(pod.executorResources.disk) + pod.containers.map(c => BigDecimal(c.resources.disk)).sum
     val gpus = BigDecimal(pod.executorResources.gpus) + pod.containers.map(c => BigDecimal(c.resources.gpus)).sum
+    val networkBandwidth = BigDecimal(pod.executorResources.networkBandwidth) + pod.containers.map(c => BigDecimal(c.resources.networkBandwidth)).sum
 
     val matchedCpus = matchedResources.filter(_.getName == "cpus").map(c => BigDecimal(c.getScalar.getValue)).sum
     val matchedMem = matchedResources.filter(_.getName == "mem").map(c => BigDecimal(c.getScalar.getValue)).sum
     val matchedDisk = matchedResources.filter(_.getName == "disk").map(c => BigDecimal(c.getScalar.getValue)).sum
     val matchedGpus = matchedResources.filter(_.getName == "gpus").map(c => BigDecimal(c.getScalar.getValue)).sum
+    val matchedNetworkBandwidth = matchedResources.filter(_.getName == "network_bandwidth").map(c => BigDecimal(c.getScalar.getValue)).sum
 
     assert(cpus <= matchedCpus)
     assert(mem <= matchedMem)
     assert(disk <= matchedDisk)
     assert(gpus <= matchedGpus)
+    assert(networkBandwidth <= matchedNetworkBandwidth)
   }
 
   // We have list of (BigDecimal, Resource) pairs in order to avoid using == and != operators with doubles.
@@ -110,13 +113,15 @@ object TaskGroupBuilder extends StrictLogging {
       cpus: List[(BigDecimal, mesos.Resource)],
       mem: List[(BigDecimal, mesos.Resource)],
       disk: List[(BigDecimal, mesos.Resource)],
-      gpus: List[(BigDecimal, mesos.Resource)])
+      gpus: List[(BigDecimal, mesos.Resource)],
+      networkBandwidth: List[(BigDecimal, mesos.Resource)])
 
   private class ResourceConsumer(initial: Resources) {
     private var cpus = initial.cpus
     private var mem = initial.mem
     private var disk = initial.disk
     private var gpus = initial.gpus
+    private var networkBandwidth = initial.networkBandwidth
 
     // Find a CPU resource for the given quantity if possible, and remove the resource from the resource list.
     def consumeCpus(quantity: Double): Option[mesos.Resource] = {
@@ -150,6 +155,15 @@ object TaskGroupBuilder extends StrictLogging {
       consume(gpus, BigDecimal(quantity)).map {
         case (leftResources, consumedResource) =>
           gpus = leftResources
+          consumedResource
+      }
+    }
+
+    // Find a Network Bandwidth resource for the given quantity if possible, and remove the resource from the resource list.
+    def consumeNetworkBandwidth(quantity: Double): Option[mesos.Resource] = {
+      consume(networkBandwidth, BigDecimal(quantity)).map {
+        case (leftResources, consumedResource) =>
+          networkBandwidth = leftResources
           consumedResource
       }
     }
@@ -189,18 +203,23 @@ object TaskGroupBuilder extends StrictLogging {
     val gpuQuantities = {
       BigDecimal(pod.executorResources.gpus) :: pod.containers.map(c => BigDecimal(c.resources.gpus)).toList
     }.filter(_ > decimalZero)
+    val networkBandwidthQuantities = {
+      BigDecimal(pod.executorResources.networkBandwidth) :: pod.containers.map(c => BigDecimal(c.resources.networkBandwidth)).toList
+    }.filter(_ > decimalZero)
 
     val cpuResources = matchedResources.filter(_.getName == "cpus").toList
     val memResources = matchedResources.filter(_.getName == "mem").toList
     val diskResources = matchedResources.filter(_.getName == "disk").toList
     val gpuResources = matchedResources.filter(_.getName == "gpus").toList
+    val networkBandwidthResources = matchedResources.filter(_.getName == "network_bandwidth").toList
 
     val packedCpus = binPackResources(cpuQuantities, cpuResources)
     val packedMem = binPackResources(memQuantities, memResources)
     val packedDisk = binPackResources(diskQuantities, diskResources)
     val packedGpus = binPackResources(gpuQuantities, gpuResources)
+    val packedNetworkBandwidth = binPackResources(networkBandwidthQuantities, networkBandwidthResources)
 
-    Resources(cpus = packedCpus, mem = packedMem, disk = packedDisk, gpus = packedGpus)
+    Resources(cpus = packedCpus, mem = packedMem, disk = packedDisk, gpus = packedGpus, networkBandwidth = packedNetworkBandwidth)
   }
 
   private[this] def binPackResources(
@@ -356,6 +375,7 @@ object TaskGroupBuilder extends StrictLogging {
     consumer.consumeMem(container.resources.mem).foreach(builder.addResources)
     consumer.consumeDisk(container.resources.disk).foreach(builder.addResources)
     consumer.consumeGpus(container.resources.gpus.toDouble).foreach(builder.addResources)
+    consumer.consumeNetworkBandwidth(container.resources.networkBandwidth.toDouble).foreach(builder.addResources)
 
     if (container.labels.nonEmpty)
       builder.setLabels(mesos.Labels.newBuilder.addAllLabels(container.labels.map {
@@ -413,6 +433,7 @@ object TaskGroupBuilder extends StrictLogging {
     consumer.consumeMem(podDefinition.executorResources.mem).foreach(executorInfo.addResources)
     consumer.consumeDisk(podDefinition.executorResources.disk).foreach(executorInfo.addResources)
     consumer.consumeGpus(podDefinition.executorResources.gpus.toDouble).foreach(executorInfo.addResources)
+    consumer.consumeNetworkBandwidth(podDefinition.executorResources.networkBandwidth.toDouble).foreach(executorInfo.addResources)
     executorInfo.addAllResources(portsMatch.resources.asJava)
 
     if (podDefinition.networks.nonEmpty || podDefinition.volumes.nonEmpty || podDefinition.linuxInfo.nonEmpty) {
@@ -695,7 +716,8 @@ object TaskGroupBuilder extends StrictLogging {
       MARATHON_CONTAINER_RESOURCE_CPUS -> Some(container.resources.cpus.toString),
       MARATHON_CONTAINER_RESOURCE_MEM -> Some(container.resources.mem.toString),
       MARATHON_CONTAINER_RESOURCE_DISK -> Some(container.resources.disk.toString),
-      MARATHON_CONTAINER_RESOURCE_GPUS -> Some(container.resources.gpus.toString)
+      MARATHON_CONTAINER_RESOURCE_GPUS -> Some(container.resources.gpus.toString),
+      MARATHON_CONTAINER_RESOURCE_NETWORK_BANDWIDTH -> Some(container.resources.networkBandwidth.toString)
     ).collect {
         case (key, Some(value)) => key -> value
       }

@@ -36,6 +36,14 @@ types:
         description: The amount of GPU cores that are needed for the pod
         example: 1
         default: 0
+      networkBandwidth?:
+        displayName: amount of network bandwidth in Mbps
+        type: integer
+        format: int32
+        minimum: 0
+        description: The amount of network bandwidth that is needed for the pod
+        example: 1
+        default: 0
 
   ExecutorResources:
     type: object

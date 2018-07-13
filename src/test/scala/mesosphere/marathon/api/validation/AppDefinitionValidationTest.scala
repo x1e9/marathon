@@ -100,6 +100,13 @@ class AppDefinitionValidationTest extends UnitTest with ValidationTestLike {
           "/gpus" -> PersistentVolumeResourcesChanged)
       }
 
+      "be invalid if network_bandwidth change" in new Fixture {
+        val app = validResidentApp
+        val to = app.copy(resources = app.resources.copy(networkBandwidth = 3))
+        AppDefinition.residentUpdateIsValid(app)(to) should haveViolations(
+          "/networkBandwidth" -> PersistentVolumeResourcesChanged)
+      }
+
       "be invalid with default upgrade strategy" in new Fixture {
         val app = validResidentApp
         val to = app.copy(upgradeStrategy = UpgradeStrategy.empty)

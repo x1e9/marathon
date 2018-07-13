@@ -64,7 +64,7 @@ class TaskGroupBuilderTest extends UnitTest with Inside {
     }
 
     "build from a PodDefinition with a single container" in {
-      val offer = MarathonTestHelper.makeBasicOffer(cpus = 1.1, mem = 160.0, disk = 10.0).build
+      val offer = MarathonTestHelper.makeBasicOffer(cpus = 1.1, mem = 160.0, disk = 10.0, networkBandwidth = 100.0).build
 
       val podSpec = PodDefinition(
         id = AbsolutePathId("/product/frontend"), role = "*",
@@ -72,7 +72,7 @@ class TaskGroupBuilderTest extends UnitTest with Inside {
           MesosContainer(
             name = "Foo",
             exec = None,
-            resources = raml.Resources(cpus = 1.0f, mem = 128.0f)
+            resources = raml.Resources(cpus = 1.0f, mem = 128.0f, networkBandwidth = 100)
           )
         )
       )
@@ -96,22 +96,22 @@ class TaskGroupBuilderTest extends UnitTest with Inside {
     }
 
     "build from a PodDefinition with multiple containers" in {
-      val offer = MarathonTestHelper.makeBasicOffer(cpus = 4.1, mem = 1056.0, disk = 10.0).build
+      val offer = MarathonTestHelper.makeBasicOffer(cpus = 4.1, mem = 1056.0, disk = 10.0, networkBandwidth = 400.0).build
 
       val podSpec = PodDefinition(
         id = AbsolutePathId("/product/frontend"), role = "*",
         containers = Seq(
           MesosContainer(
             name = "Foo",
-            resources = raml.Resources(cpus = 1.0f, mem = 512.0f)
+            resources = raml.Resources(cpus = 1.0f, mem = 512.0f, networkBandwidth = 100)
           ),
           MesosContainer(
             name = "Foo2",
-            resources = raml.Resources(cpus = 2.0f, mem = 256.0f)
+            resources = raml.Resources(cpus = 2.0f, mem = 256.0f, networkBandwidth = 100)
           ),
           MesosContainer(
             name = "Foo3",
-            resources = raml.Resources(cpus = 1.0f, mem = 256.0f)
+            resources = raml.Resources(cpus = 1.0f, mem = 256.0f, networkBandwidth = 100)
           )
         )
       )
@@ -384,7 +384,7 @@ class TaskGroupBuilderTest extends UnitTest with Inside {
       val offer = MarathonTestHelper.makeBasicOffer(cpus = 4.0f, mem = 1024.0f, disk = 10.0).build()
       val mesosContainer = MesosContainer(
         name = containerIdStr,
-        resources = raml.Resources(cpus = 2.0f, mem = 512.0f, disk = 0.0f)
+        resources = raml.Resources(cpus = 2.0f, mem = 512.0f, disk = 0.0f, networkBandwidth = 100)
       )
 
       val podSpec = PodDefinition(

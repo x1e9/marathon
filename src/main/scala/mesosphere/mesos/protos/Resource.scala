@@ -8,4 +8,5 @@ object Resource {
   final val DISK = "disk"
   final val PORTS = "ports"
   final val GPUS = "gpus"
+  final val NETWORK_BANDWIDTH = "network_bandwidth"
 }

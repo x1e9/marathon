@@ -60,7 +60,8 @@ case class PodDefinition(
     cpus = (BigDecimal(executorResources.cpus) + containers.withFilter(filter).map(r => BigDecimal(r.resources.cpus)).sum).doubleValue(),
     mem = (BigDecimal(executorResources.mem) + containers.withFilter(filter).map(r => BigDecimal(r.resources.mem)).sum).doubleValue(),
     disk = (BigDecimal(executorResources.disk) + containers.withFilter(filter).map(r => BigDecimal(r.resources.disk)).sum).doubleValue(),
-    gpus = executorResources.gpus + containers.withFilter(filter).map(_.resources.gpus).sum
+    gpus = executorResources.gpus + containers.withFilter(filter).map(_.resources.gpus).sum,
+    networkBandwidth = containers.withFilter(filter).map(_.resources.networkBandwidth).sum
   )
 
   override def withInstances(instances: Int): RunSpec = copy(instances = instances)

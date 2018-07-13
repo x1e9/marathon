@@ -191,6 +191,7 @@ class AppDefinitionTest extends UnitTest with ValidationTestLike {
       validator(app.copy(resources = Resources(cpus = -3.0))) should haveViolations("/cpus" -> "got -3.0, expected 0.0 or more")
       validator(app.copy(resources = Resources(disk = -3.0))) should haveViolations("/disk" -> "got -3.0, expected 0.0 or more")
       validator(app.copy(resources = Resources(gpus = -3))) should haveViolations("/gpus" -> "got -3, expected 0 or more")
+      validator(app.copy(resources = Resources(networkBandwidth = -3))) should haveViolations("/network_bandwidth" -> "got -3, expected 0 or more")
       validator(app.copy(instances = -3)) should haveViolations("/instances" -> "got -3, expected 0 or more")
 
       validator(app.copy(resources = Resources(gpus = 1))) should haveViolations("/" -> "Feature gpu_resources is not enabled. Enable with --enable_features gpu_resources)")

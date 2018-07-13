@@ -34,7 +34,7 @@ class TaskBuilderTest extends UnitTest {
 
   "TaskBuilder" should {
     "BuildIfMatches" in {
-      val offer = MarathonTestHelper.makeBasicOffer(cpus = 1.0, mem = 128.0, disk = 2000.0, beginPort = 31000, endPort = 32000).build
+      val offer = MarathonTestHelper.makeBasicOffer(cpus = 1.0, mem = 128.0, disk = 2000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 32000).build
 
       val task: Option[(MesosProtos.TaskInfo, NetworkInfo)] = buildIfMatches(
         offer,
@@ -42,7 +42,7 @@ class TaskBuilderTest extends UnitTest {
           id = AbsolutePathId("/product/frontend"),
           role = "*",
           cmd = Some("foo"),
-          resources = Resources(cpus = 1.0, mem = 64.0, disk = 1.0),
+          resources = Resources(cpus = 1.0, mem = 64.0, disk = 1.0, networkBandwidth = 100),
           executor = "//cmd",
           portDefinitions = PortDefinitions(8080, 8081)
         )
@@ -329,7 +329,7 @@ class TaskBuilderTest extends UnitTest {
     }
 
     "build creates task with appropriate resource share" in {
-      val offer = MarathonTestHelper.makeBasicOffer(cpus = 2.0, mem = 128.0, disk = 2000.0, beginPort = 31000, endPort = 32000).build
+      val offer = MarathonTestHelper.makeBasicOffer(cpus = 2.0, mem = 128.0, disk = 2000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 32000).build
 
       val task: Option[(MesosProtos.TaskInfo, _)] = buildIfMatches(
         offer,
@@ -337,7 +337,7 @@ class TaskBuilderTest extends UnitTest {
           id = AbsolutePathId("/product/frontend"),
           role = "*",
           cmd = Some("foo"),
-          resources = Resources(cpus = 1.0, mem = 64.0, disk = 1.0),
+          resources = Resources(cpus = 1.0, mem = 64.0, disk = 1.0, networkBandwidth = 100),
           executor = "//cmd",
           portDefinitions = PortDefinitions(8080, 8081)
         )
@@ -350,6 +350,7 @@ class TaskBuilderTest extends UnitTest {
       assert(resource("cpus") == ScalarResource("cpus", 1))
       assert(resource("mem") == ScalarResource("mem", 64))
       assert(resource("disk") == ScalarResource("disk", 1))
+      assert(resource("network_bandwidth") == ScalarResource("network_bandwidth", 100))
       val portsResource: Resource = resource("ports")
       assert(portsResource.getRanges.getRangeList.map(range => range.getEnd - range.getBegin + 1).sum == 2)
       assert(portsResource.getRole == ResourceRole.Unreserved: @silent)
@@ -378,7 +379,7 @@ class TaskBuilderTest extends UnitTest {
 
     "build creates task with appropriate resource share also preserves role" in {
       val offer = MarathonTestHelper.makeBasicOffer(
-        cpus = 2.0, mem = 128.0, disk = 2000.0, beginPort = 31000, endPort = 32000, role = "marathon"
+        cpus = 2.0, mem = 128.0, disk = 2000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 32000, role = "marathon"
       ).build
 
       val task: Option[(MesosProtos.TaskInfo, _)] = buildIfMatches(
@@ -387,7 +388,7 @@ class TaskBuilderTest extends UnitTest {
           id = AbsolutePathId("/product/frontend"),
           role = "*",
           cmd = Some("foo"),
-          resources = Resources(cpus = 1.0, mem = 64.0, disk = 1.0),
+          resources = Resources(cpus = 1.0, mem = 64.0, disk = 1.0, networkBandwidth = 100),
           executor = "//cmd",
           portDefinitions = PortDefinitions(8080, 8081)
         ),
@@ -402,6 +403,7 @@ class TaskBuilderTest extends UnitTest {
       assert(resource("cpus") == ScalarResource("cpus", 1, "marathon"))
       assert(resource("mem") == ScalarResource("mem", 64, "marathon"))
       assert(resource("disk") == ScalarResource("disk", 1, "marathon"))
+      assert(resource("network_bandwidth") == ScalarResource("network_bandwidth", 100, "marathon"))
       val portsResource: Resource = resource("ports")
       assert(portsResource.getRanges.getRangeList.map(range => range.getEnd - range.getBegin + 1).sum == 2)
       assert(portsResource.getRole == "marathon": @silent)
@@ -634,7 +636,7 @@ class TaskBuilderTest extends UnitTest {
 
     "build creates task for MESOS Docker container" in {
       val offer = MarathonTestHelper.makeBasicOfferWithRole(
-        cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
+        cpus = 1.0, mem = 128.0, disk = 1000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
       )
         .addResources(RangesResource(Resource.PORTS, Seq(protos.Range(33000, 34000)), "marathon"))
         .build
@@ -1001,13 +1003,15 @@ class TaskBuilderTest extends UnitTest {
     }
 
     "BuildIfMatchesWithRole" in {
-      val offer = MarathonTestHelper.makeBasicOfferWithRole(cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 32000, role = "marathon")
+      val offer = MarathonTestHelper.makeBasicOfferWithRole(cpus = 1.0, mem = 128.0, disk = 1000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 32000, role = "marathon")
         .addResources(ScalarResource("cpus", 1, ResourceRole.Unreserved))
         .addResources(ScalarResource("mem", 128, ResourceRole.Unreserved))
         .addResources(ScalarResource("disk", 1000, ResourceRole.Unreserved))
+        .addResources(ScalarResource("network_bandwidth", 400, ResourceRole.Unreserved))
         .addResources(ScalarResource("cpus", 2, "marathon"))
         .addResources(ScalarResource("mem", 256, "marathon"))
         .addResources(ScalarResource("disk", 2000, "marathon"))
+        .addResources(ScalarResource("network_bandwidth", 600, "marathon"))
         .addResources(RangesResource(Resource.PORTS, Seq(protos.Range(33000, 34000)), "marathon"))
         .build
 
@@ -1016,7 +1020,7 @@ class TaskBuilderTest extends UnitTest {
         AppDefinition(
           id = AbsolutePathId("/testApp"),
           role = "*",
-          resources = Resources(cpus = 2.0, mem = 200.0, disk = 2.0),
+          resources = Resources(cpus = 2.0, mem = 200.0, disk = 2.0, networkBandwidth = 600),
           executor = "//cmd",
           portDefinitions = PortDefinitions(8080, 8081)
         ),
@@ -1041,13 +1045,15 @@ class TaskBuilderTest extends UnitTest {
     }
 
     "BuildIfMatchesWithRole2" in {
-      val offer = MarathonTestHelper.makeBasicOfferWithRole(cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 32000, role = ResourceRole.Unreserved)
+      val offer = MarathonTestHelper.makeBasicOfferWithRole(cpus = 1.0, mem = 128.0, disk = 1000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 32000, role = ResourceRole.Unreserved)
         .addResources(ScalarResource("cpus", 1, ResourceRole.Unreserved))
         .addResources(ScalarResource("mem", 128, ResourceRole.Unreserved))
         .addResources(ScalarResource("disk", 1000, ResourceRole.Unreserved))
+        .addResources(ScalarResource("network_bandwidth", 400, ResourceRole.Unreserved))
         .addResources(ScalarResource("cpus", 2, "marathon"))
         .addResources(ScalarResource("mem", 256, "marathon"))
         .addResources(ScalarResource("disk", 2000, "marathon"))
+        .addResources(ScalarResource("network_bandwidth", 600))
         .addResources(RangesResource(Resource.PORTS, Seq(protos.Range(33000, 34000)), "marathon"))
         .build
 
@@ -1081,7 +1087,7 @@ class TaskBuilderTest extends UnitTest {
 
     "PortMappingsWithZeroContainerPort" in {
       val offer = MarathonTestHelper.makeBasicOfferWithRole(
-        cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 31000, role = ResourceRole.Unreserved
+        cpus = 1.0, mem = 128.0, disk = 1000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 31000, role = ResourceRole.Unreserved
       )
         .addResources(RangesResource(Resource.PORTS, Seq(protos.Range(33000, 34000)), "marathon"))
         .build
@@ -1110,7 +1116,7 @@ class TaskBuilderTest extends UnitTest {
 
     "PortMappingsWithUserModeAndDefaultPortMapping" in {
       val offer = MarathonTestHelper.makeBasicOfferWithRole(
-        cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
+        cpus = 1.0, mem = 128.0, disk = 1000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
       )
         .addResources(RangesResource(Resource.PORTS, Seq(protos.Range(33000, 34000)), "marathon"))
         .build
@@ -1143,7 +1149,7 @@ class TaskBuilderTest extends UnitTest {
 
     "Docker Container PortMappingsWithoutHostPort" in {
       val offer = MarathonTestHelper.makeBasicOfferWithRole(
-        cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
+        cpus = 1.0, mem = 128.0, disk = 1000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
       )
         .addResources(RangesResource(Resource.PORTS, Seq(protos.Range(33000, 34000)), "marathon"))
         .build
@@ -1179,7 +1185,7 @@ class TaskBuilderTest extends UnitTest {
 
     "Mesos Container PortMappingsWithoutHostPort" in {
       val offer = MarathonTestHelper.makeBasicOfferWithRole(
-        cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
+        cpus = 1.0, mem = 128.0, disk = 1000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
       )
         .addResources(RangesResource(Resource.PORTS, Seq(protos.Range(33000, 34000)), "marathon"))
         .build
@@ -1219,7 +1225,7 @@ class TaskBuilderTest extends UnitTest {
 
     "DockerContainerWithMesosTaskIdLabel" in {
       val offer = MarathonTestHelper.makeBasicOfferWithRole(
-        cpus = 1.0, mem = 128.0, disk = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
+        cpus = 1.0, mem = 128.0, disk = 1000.0, networkBandwidth = 1000.0, beginPort = 31000, endPort = 31010, role = ResourceRole.Unreserved
       )
         .addResources(RangesResource(Resource.PORTS, Seq(protos.Range(33000, 34000)), "marathon"))
         .build
@@ -1428,6 +1434,7 @@ class TaskBuilderTest extends UnitTest {
           "MARATHON_APP_RESOURCE_MEM" -> App.DefaultMem.toString,
           "MARATHON_APP_RESOURCE_DISK" -> App.DefaultDisk.toString,
           "MARATHON_APP_RESOURCE_GPUS" -> App.DefaultGpus.toString,
+          "MARATHON_APP_RESOURCE_NETWORK_BANDWIDTH" -> App.DefaultNetworkBandwidth.toString,
           "MARATHON_APP_LABELS" -> ""
         )
       )
@@ -1443,7 +1450,7 @@ class TaskBuilderTest extends UnitTest {
         container = Some(Docker(
           image = "myregistry/myimage:version"
         )),
-        resources = Resources(cpus = 10.0, mem = 256.0, disk = 128.0, gpus = 2),
+        resources = Resources(cpus = 10.0, mem = 256.0, disk = 128.0, gpus = 2, networkBandwidth = 1024),
         labels = Map(
           "LABEL1" -> "VALUE1",
           "LABEL2" -> "VALUE2"
@@ -1463,6 +1470,7 @@ class TaskBuilderTest extends UnitTest {
           "MARATHON_APP_RESOURCE_MEM" -> "256.0",
           "MARATHON_APP_RESOURCE_DISK" -> "128.0",
           "MARATHON_APP_RESOURCE_GPUS" -> "2",
+          "MARATHON_APP_RESOURCE_NETWORK_BANDWIDTH" -> "1024",
           "MARATHON_APP_LABELS" -> "LABEL1 LABEL2",
           "MARATHON_APP_LABEL_LABEL1" -> "VALUE1",
           "MARATHON_APP_LABEL_LABEL2" -> "VALUE2"
@@ -1643,7 +1651,7 @@ class TaskBuilderTest extends UnitTest {
       val nonPrefixedEnvVars = env.filterKeys(!_.startsWith("P_"))
 
       val whiteList = Seq("MESOS_TASK_ID", "MARATHON_APP_ID", "MARATHON_APP_VERSION", "MARATHON_APP_RESOURCE_CPUS",
-        "MARATHON_APP_RESOURCE_MEM", "MARATHON_APP_RESOURCE_DISK", "MARATHON_APP_RESOURCE_GPUS", "MARATHON_APP_LABELS")
+        "MARATHON_APP_RESOURCE_MEM", "MARATHON_APP_RESOURCE_DISK", "MARATHON_APP_RESOURCE_GPUS", "MARATHON_APP_LABELS", "MARATHON_APP_RESOURCE_NETWORK_BANDWIDTH")
 
       assert(nonPrefixedEnvVars.keySet.forall(whiteList.contains))
     }

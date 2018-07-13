@@ -19,7 +19,7 @@ trait Apps {
   val DefaultPortDefinitions = Seq(PortDefinition(name = Some("default")))
   val DefaultPortMappings = Seq(ContainerPortMapping(name = Option("default")))
   val DefaultAppResidency = Some(AppResidency())
-  val DefaultResources = Resources(cpus = App.DefaultCpus, mem = App.DefaultMem, disk = App.DefaultDisk, gpus = App.DefaultGpus)
+  val DefaultResources = Resources(cpus = App.DefaultCpus, mem = App.DefaultMem, disk = App.DefaultDisk, gpus = App.DefaultGpus, networkBandwidth = App.DefaultNetworkBandwidth)
 }
 
 object Apps extends Apps

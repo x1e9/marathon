@@ -9,6 +9,7 @@ object NoOfferMatchReason {
   case object InsufficientCpus extends NoOfferMatchReason
   case object InsufficientDisk extends NoOfferMatchReason
   case object InsufficientGpus extends NoOfferMatchReason
+  case object InsufficientNetworkBandwidth extends NoOfferMatchReason
   case object InsufficientPorts extends NoOfferMatchReason
   case object UnfulfilledRole extends NoOfferMatchReason
   case object UnfulfilledConstraint extends NoOfferMatchReason
@@ -30,6 +31,7 @@ object NoOfferMatchReason {
     InsufficientMemory,
     InsufficientDisk,
     InsufficientGpus,
+    InsufficientNetworkBandwidth,
     InsufficientPorts,
     DeclinedScarceResources
   )
@@ -40,6 +42,7 @@ object NoOfferMatchReason {
     case Resource.GPUS => InsufficientGpus
     case Resource.MEM => InsufficientMemory
     case Resource.PORTS => InsufficientPorts
+    case Resource.NETWORK_BANDWIDTH => InsufficientNetworkBandwidth
     case _ => throw new IllegalArgumentException(s"Not able to match $name to NoOfferMatchReason")
   }
 }
