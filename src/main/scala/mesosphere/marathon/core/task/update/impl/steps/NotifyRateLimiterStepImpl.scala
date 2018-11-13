@@ -29,7 +29,6 @@ class NotifyRateLimiterStepImpl @Inject() (
     * RateLimiter for that.
     */
   override def process(update: InstanceChange): Future[Done] = {
-
     update.instance match {
       case instance if agentDraining(instance) =>
         val runSpecId = update.runSpecId
@@ -43,6 +42,9 @@ class NotifyRateLimiterStepImpl @Inject() (
 
       case instance if advanceWorthy(instance.state.condition) && update.conditionUpdated =>
         launchQueue.advanceDelay(instance.runSpec)
+
+      case instance if reduceWorthy(instance.state.condition) =>
+        launchQueue.decreaseDelay(instance.runSpec)
 
       case _ =>
       // nothing to do
@@ -86,6 +88,11 @@ private[steps] object NotifyRateLimiterStep extends StrictLogging {
 
   // A set of conditions that are worth advancing an existing delay of the corresponding runSpec
   val advanceWorthy: Set[Condition] = Set(
-    Condition.Staging, Condition.Starting, Condition.Running, Condition.Provisioned
+    Condition.Staging, Condition.Starting, Condition.Provisioned
+  )
+
+  // When one runSpec is Running/Healthy, we should decrease delay
+  val reduceWorthy: Set[Condition] = Set(
+    Condition.Running
   )
 }

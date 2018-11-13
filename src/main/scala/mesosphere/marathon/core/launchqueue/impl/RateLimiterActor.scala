@@ -78,7 +78,9 @@ private class RateLimiterActor private (rateLimiter: RateLimiter) extends Actor 
       rateLimiter.addDelay(runSpec)
       notify(RateLimiter.DelayUpdate(runSpec.configRef, rateLimiter.getDelay(runSpec.configRef)))
 
-    case DecreaseDelay(_) => // ignore for now
+    case DecreaseDelay(runSpec) =>
+      rateLimiter.decreaseDelay(runSpec)
+      notify(RateLimiter.DelayUpdate(runSpec.configRef, rateLimiter.getDelay(runSpec.configRef)))
 
     case AdvanceDelay(runSpec) =>
       rateLimiter.advanceDelay(runSpec)

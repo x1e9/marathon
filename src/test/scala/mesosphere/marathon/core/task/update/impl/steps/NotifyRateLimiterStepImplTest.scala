@@ -21,7 +21,7 @@ class NotifyRateLimiterStepImplTest extends UnitTest with TableDrivenPropertyChe
       ("gone",                      AddDelay,           TaskStatusUpdateTestHelper.gone().wrapped),
       ("finished",                  AddDelay,           TaskStatusUpdateTestHelper.finished().wrapped),
       ("starting",                  AdvanceDelay,       TaskStatusUpdateTestHelper.starting().wrapped),
-      ("running",                   AdvanceDelay,       TaskStatusUpdateTestHelper.running().wrapped),
+      ("running",                   DecreaseDelay,      TaskStatusUpdateTestHelper.running().wrapped),
       ("unknown",                   Noop,               TaskStatusUpdateTestHelper.unknown().wrapped),
       ("killed",                    Noop,               TaskStatusUpdateTestHelper.killed().wrapped),
       ("unreachable",               Noop,               TaskStatusUpdateTestHelper.unreachable().wrapped),
@@ -36,6 +36,7 @@ class NotifyRateLimiterStepImplTest extends UnitTest with TableDrivenPropertyChe
             case ResetDelay => verify(f.launchQueue).resetDelay(instanceChange.instance.runSpec)
             case AddDelay => verify(f.launchQueue).addDelay(instanceChange.instance.runSpec)
             case AdvanceDelay => verify(f.launchQueue).advanceDelay(instanceChange.instance.runSpec)
+            case DecreaseDelay => verify(f.launchQueue).decreaseDelay(instanceChange.instance.runSpec)
             case Noop => noMoreInteractions(f.launchQueue)
           }
         }
@@ -47,6 +48,7 @@ class NotifyRateLimiterStepImplTest extends UnitTest with TableDrivenPropertyChe
   case object ResetDelay extends ExpectedAction
   case object AddDelay extends ExpectedAction
   case object AdvanceDelay extends ExpectedAction
+  case object DecreaseDelay extends ExpectedAction
   case object Noop extends ExpectedAction
 
   class Fixture {

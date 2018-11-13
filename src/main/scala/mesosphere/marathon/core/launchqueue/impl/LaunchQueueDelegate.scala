@@ -62,6 +62,8 @@ private[launchqueue] class LaunchQueueDelegate(
     }
     answerFuture.mapTo[R]
   }
+
+  override def decreaseDelay(spec: RunSpec): Unit = rateLimiterActor ! RateLimiterActor.DecreaseDelay(spec)
 }
 
 private[impl] object LaunchQueueDelegate {
