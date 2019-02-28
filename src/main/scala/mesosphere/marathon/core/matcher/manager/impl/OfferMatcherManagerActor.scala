@@ -355,7 +355,7 @@ private[impl] class OfferMatcherManagerActor private (
 
   def completeWithNoMatch(reason: String, offer: Offer, promise: Promise[MatchedInstanceOps], resendThisOffer: Boolean): Unit = {
     promise.trySuccess(MatchedInstanceOps.noMatch(offer.getId, resendThisOffer))
-    logger.info(s"No match for:${offer.getId.getValue} from:${offer.getHostname} reason:$reason")
+    logger.debug(s"No match for:${offer.getId.getValue} from:${offer.getHostname} reason:$reason")
   }
 }
 

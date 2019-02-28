@@ -40,7 +40,7 @@ private[plugin] class PluginManagerImpl(
     def configure(plugin: T, definition: PluginDefinition): T = plugin match {
       case cf: PluginConfiguration if definition.configuration.isDefined =>
         try {
-          logger.info(s"Configure the plugin with this configuration: ${definition.configuration}")
+          logger.debug(s"Configure the plugin with this configuration: ${definition.configuration}")
           cf.initialize(Map("frameworkName" -> config.frameworkName()), definition.configuration.get)
         } catch {
           case NonFatal(ex) => {
@@ -92,7 +92,7 @@ object PluginManagerImpl extends StrictLogging {
 
   def parse(fileName: String): PluginDefinitions = {
     val confJson: JsObject = Json.parse(FileUtils.readFileToByteArray(new File(fileName).getCanonicalFile)).as[JsObject]
-    logger.info(s"Found plugin configuration: ${Json.prettyPrint(confJson)}")
+    logger.debug(s"Found plugin configuration: ${Json.prettyPrint(confJson)}")
 
     val plugins: Seq[PluginDefinition] = confJson.\("plugins").as[JsObject].fields.map {
       case (id, value) =>

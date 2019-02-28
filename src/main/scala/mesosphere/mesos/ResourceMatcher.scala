@@ -237,9 +237,12 @@ object ResourceMatcher extends StrictLogging {
     }
 
     val checkAvailability: Boolean = {
+      logger.info(s"Studiying offer [${offer.getId.getValue}] availability: ${offer.getHostname}\n")
       if (conf.maintenanceMode()) {
+        logger.trace(s"Studiying offer [${offer.getId.getValue}] availability: maintenance feature activated\n")
         val result = Availability.offerAvailable(offer, conf.drainingTime)
         if (!result) {
+          logger.trace(s"Studiying offer [${offer.getId.getValue}] availability: offer is not available\n")
           noOfferMatchReasons += NoOfferMatchReason.UnfulfilledConstraint
           // Add unavailability to noOfferMatchReasons
           noOfferMatchReasons += NoOfferMatchReason.AgentMaintenance
