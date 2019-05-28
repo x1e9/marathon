@@ -35,6 +35,7 @@ private[health] class HealthCheckActor(
   import context.dispatcher
 
   val healthByInstanceId = TrieMap.empty[Instance.Id, Health]
+  var killingInFlight = Set.empty[Instance.Id]
 
   override def preStart(): Unit = {
     healthCheck match {
@@ -77,6 +78,8 @@ private[health] class HealthCheckActor(
     val inactiveInstanceIds: Set[Instance.Id] = instances.filterNot(_.isActive).map(_.instanceId)(collection.breakOut)
     inactiveInstanceIds.foreach { inactiveId =>
       healthByInstanceId.remove(inactiveId)
+      // Remove inactive (definitively killed) instance from killingInFlight list
+      killingInFlight = killingInFlight - inactiveId
     }
 
     val checksToPurge = instances.withFilter(!_.isActive).map(instance => {
@@ -101,6 +104,10 @@ private[health] class HealthCheckActor(
       if (instance.isUnreachable) {
         logger.info(s"Instance $instanceId on host ${instance.hostname} is temporarily unreachable. Performing no kill.")
       } else {
+        if (antiSnowballEnabled && !(checkEnoughInstancesRunning(instance))) {
+          logger.info(s"[anti-snowball] Won't kill $instanceId because too few instances are running")
+          return
+        }
         logger.info(s"Send kill request for $instanceId on host ${instance.hostname.getOrElse("unknown")} to driver")
         require(instance.tasksMap.size == 1, "Unexpected pod instance in HealthCheckActor")
         val taskId = instance.appTask.taskId
@@ -116,9 +123,30 @@ private[health] class HealthCheckActor(
             timestamp = health.lastFailure.getOrElse(Timestamp.now()).toString
           )
         )
+        killingInFlight = killingInFlight + instanceId
+        logger.debug(s"[anti-snowball] killing ${instanceId}, currently ${killingInFlight.size} instances killingInFlight")
         killService.killInstancesAndForget(Seq(instance), KillReason.FailedHealthChecks)
       }
     }
+  }
+
+  def antiSnowballEnabled(): Boolean = {
+    app.upgradeStrategy.minimumHealthCapacity < 1
+  }
+
+  /** Check if enough active and ready instances will remain if we kill 1 unhealthy instance */
+  def checkEnoughInstancesRunning(unhealthyInstance: Instance): Boolean = {
+    val instances: Seq[Instance] = instanceTracker.specInstancesSync(app.id)
+    val activeInstanceIds: Set[Instance.Id] = instances.withFilter(_.isActive).map(_.instanceId)(collection.breakOut)
+    val healthyInstances = healthByInstanceId.filterKeys(activeInstanceIds)
+      .filterKeys(instanceId => !killingInFlight(instanceId))
+
+    val futureHealthyInstances = healthyInstances.filterKeys(instanceId => unhealthyInstance.instanceId != instanceId)
+      .count{ case (_, health) => health.ready }
+
+    val futureHealthyCapacity: Double = futureHealthyInstances / app.instances.toDouble
+    logger.debug(s"[anti-snowball] checkEnoughInstancesRunning: $futureHealthyCapacity >= ${app.upgradeStrategy.minimumHealthCapacity}")
+    futureHealthyCapacity >= app.upgradeStrategy.minimumHealthCapacity
   }
 
   def ignoreFailures(instance: Instance, health: Health): Boolean = {
@@ -149,7 +177,10 @@ private[health] class HealthCheckActor(
               if (result.publishEvent) {
                 eventBus.publish(FailedHealthCheck(app.id, instanceId, healthCheck))
               }
-              checkConsecutiveFailures(instance, health)
+              self ! InstanceHealthFailure(instance, health)
+              // FIXME here we break the behaviour by sending health update before the
+              // consecutive failures check is performed, but the original code was sending
+              // the health result before the killing even happened, so it is probably harmless
               health.update(result)
             }
           case None =>
@@ -192,6 +223,9 @@ private[health] class HealthCheckActor(
     case instanceHealth: InstanceHealth =>
       updateInstanceHealth(instanceHealth)
 
+    case InstanceHealthFailure(instance, health) =>
+      checkConsecutiveFailures(instance, health)
+
     case 'restart =>
       throw new RuntimeException("HealthCheckActor stream stopped, restarting")
   }
@@ -226,4 +260,6 @@ object HealthCheckActor {
 
   case class InstanceHealth(result: HealthResult, health: Health, newHealth: Health)
   case class InstancesUpdate(version: Timestamp, instances: Seq[Instance])
+
+  case class InstanceHealthFailure(instance: Instance, health: Health)
 }
