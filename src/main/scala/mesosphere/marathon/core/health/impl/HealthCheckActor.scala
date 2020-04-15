@@ -38,6 +38,8 @@ private[health] class HealthCheckActor(
   val healthByTaskId = TrieMap.empty[Task.Id, Health]
   var killingInFlight = Set.empty[Task.Id]
 
+  private case class HealthCheckStreamStopped(thisInstance: this.type)
+
   override def preStart(): Unit = {
     healthCheck match {
       case marathonHealthCheck: MarathonHealthCheck =>
@@ -62,10 +64,11 @@ private[health] class HealthCheckActor(
             done.onComplete {
               case Success(_) =>
                 logger.info(s"HealthCheck stream for app ${app.id} version ${app.version} and healthCheck $healthCheck was stopped")
+                self ! HealthCheckStreamStopped(this)
 
               case Failure(ex) =>
                 logger.warn(s"HealthCheck stream for app ${app.id} version ${app.version} and healthCheck $healthCheck crashed due to:", ex)
-                self ! 'restart
+                self ! HealthCheckStreamStopped(this)
             }
           }
           .runWith(healthCheckHub)
@@ -231,8 +234,11 @@ private[health] class HealthCheckActor(
     case InstanceHealthFailure(instance, health) =>
       checkConsecutiveFailures(instance, health)
 
-    case 'restart =>
-      throw new RuntimeException("HealthCheckActor stream stopped, restarting")
+    case HealthCheckStreamStopped(thisInstance) =>
+      if (thisInstance == this)
+        throw new RuntimeException("HealthCheckActor stream stopped, restarting")
+      else
+        logger.info("Stream pertaining to previous instance of actor stopped; ignoring.")
   }
 }
 
