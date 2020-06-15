@@ -10,6 +10,7 @@ import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.MarathonSchedulerActor.{DeploymentFailed, DeploymentStarted}
 import mesosphere.marathon.core.deployment.{DeploymentPlan, DeploymentStep, DeploymentStepInfo}
 import mesosphere.marathon.core.deployment.impl.DeploymentManagerActor._
+import mesosphere.marathon.core.event.{HealthStatusRequest, HealthStatusResponse}
 import mesosphere.marathon.core.health.HealthCheckManager
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.readiness.{ReadinessCheckExecutor, ReadinessCheckResult}
@@ -21,7 +22,7 @@ import mesosphere.marathon.storage.repository.DeploymentRepository
 import scala.async.Async.{async, await}
 import scala.collection.mutable
 import scala.concurrent.{Future, Promise}
-import scala.util.Try
+import scala.util.{Success, Failure, Try}
 import scala.util.control.NonFatal
 
 // format: off
@@ -149,6 +150,15 @@ class DeploymentManagerActor(
   }
 
   def receive: Receive = {
+
+    case HealthStatusRequest(appId) =>
+      val s = sender()
+      healthCheckManager.statuses(appId) onComplete {
+        case Success(r) =>
+          //TODO(t.lange): Add ReadinessCheck
+          s ! HealthStatusResponse(r)
+        case Failure(e) => logger.error(s"Failed to send health status to TaskReplaceActor!", e)
+      }
 
     case CancelDeployment(plan) =>
       sender() ! cancelDeployment(plan.id)

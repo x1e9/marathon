@@ -120,8 +120,6 @@ case class Instance(
     case pod: PodDefinition => pod.containers.exists(!_.healthCheck.isEmpty)
     case _ => false // non-app/pod RunSpecs don't have health checks
   }
-
-  def consideredHealthy: Boolean = !hasConfiguredHealthChecks || state.healthy.getOrElse(false)
 }
 
 object Instance {

@@ -1,4 +1,5 @@
 package mesosphere.marathon
+
 package core.deployment.impl
 
 import akka.Done
@@ -10,8 +11,8 @@ import mesosphere.AkkaUnitTest
 import mesosphere.marathon.core.condition.Condition
 import mesosphere.marathon.core.deployment._
 import mesosphere.marathon.core.deployment.impl.DeploymentManagerActor.DeploymentFinished
-import mesosphere.marathon.core.event.InstanceChanged
-import mesosphere.marathon.core.health.HealthCheckManager
+import mesosphere.marathon.core.event.{HealthStatusRequest, HealthStatusResponse, InstanceChanged}
+import mesosphere.marathon.core.health.{HealthCheckManager, Health, Healthy}
 import mesosphere.marathon.core.instance.update.InstanceChangedEventsGenerator
 import mesosphere.marathon.core.instance.{Goal, GoalChangeReason, Instance, TestInstanceBuilder}
 import mesosphere.marathon.core.launchqueue.LaunchQueue
@@ -127,6 +128,16 @@ class DeploymentActorTest extends AkkaUnitTest with GroupCreation {
         val state = instance.state.copy(condition = Condition.Running)
         instance.copy(state = state)
       }
+      val instance2_1_new = {
+        val instance = TestInstanceBuilder.newBuilder(app2New.id, version = app2New.version).addTaskRunning().getInstance()
+        val state = instance.state.copy(condition = Condition.Running)
+        instance.copy(state = state)
+      }
+      val instance2_2_new = {
+        val instance = TestInstanceBuilder.newBuilder(app2New.id, version = app2New.version).addTaskRunning().getInstance()
+        val state = instance.state.copy(condition = Condition.Running)
+        instance.copy(state = state)
+      }
       val instance3_1 = {
         val instance = TestInstanceBuilder.newBuilder(app3.id, version = app3.version).addTaskRunning().getInstance()
         val state = instance.state.copy(condition = Condition.Running)
@@ -164,7 +175,21 @@ class DeploymentActorTest extends AkkaUnitTest with GroupCreation {
         case (step, num) => managerProbe.expectMsg(7.seconds, DeploymentStepInfo(plan, step, num + 1))
       }
 
-      managerProbe.expectMsg(5.seconds, DeploymentFinished(plan, Success(Done)))
+      managerProbe.expectMsg(5.seconds, HealthStatusRequest(app2.id))
+      tracker.specInstancesSync(app2.id) returns Seq(instance2_1)
+      system.eventStream.publish(HealthStatusResponse(Map(instance2_1.instanceId -> Seq(Health(instance2_1.instanceId).update(Healthy(null, null))))))
+      managerProbe.expectMsg(15.seconds, HealthStatusRequest(app2.id))
+      tracker.specInstancesSync(app2.id) returns Seq(instance2_1_new, instance2_2_new, instance2_1)
+      system.eventStream.publish(HealthStatusResponse(Map(
+        instance2_1.instanceId -> Seq(Health(instance2_1.instanceId).update(Healthy(null, null))),
+        instance2_1_new.instanceId -> Seq(Health(instance2_1_new.instanceId).update(Healthy(null, null))),
+        instance2_2_new.instanceId -> Seq(Health(instance2_2_new.instanceId).update(Healthy(null, null))))))
+      managerProbe.expectMsg(15.seconds, HealthStatusRequest(app2.id))
+      tracker.specInstancesSync(app2.id) returns Seq(instance2_1_new, instance2_2_new)
+      system.eventStream.publish(HealthStatusResponse(Map(
+        instance2_1_new.instanceId -> Seq(Health(instance2_1_new.instanceId).update(Healthy(null, null))),
+        instance2_2_new.instanceId -> Seq(Health(instance2_2_new.instanceId).update(Healthy(null, null))))))
+      managerProbe.expectMsg(60.seconds, DeploymentFinished(plan, Success(Done)))
 
       verify(tracker).setGoal(instance4_1.instanceId, Goal.Decommissioned, GoalChangeReason.DeletingApp)
       verify(tracker).setGoal(instance1_2.instanceId, Goal.Decommissioned, GoalChangeReason.DeploymentScaling)
@@ -184,6 +209,8 @@ class DeploymentActorTest extends AkkaUnitTest with GroupCreation {
 
       val instance1_1 = TestInstanceBuilder.newBuilder(app.id, version = app.version).addTaskRunning(startedAt = Timestamp.zero).getInstance()
       val instance1_2 = TestInstanceBuilder.newBuilder(app.id, version = app.version).addTaskRunning(startedAt = Timestamp(1000)).getInstance()
+      val instance1_1_new = TestInstanceBuilder.newBuilder(appNew.id, version = appNew.version).addTaskRunning(startedAt = Timestamp.zero).getInstance()
+      val instance1_2_new = TestInstanceBuilder.newBuilder(appNew.id, version = appNew.version).addTaskRunning(startedAt = Timestamp(1000)).getInstance()
 
       tracker.specInstancesSync(app.id, readAfterWrite = true) returns Seq(instance1_1, instance1_2)
       tracker.get(instance1_1.instanceId) returns Future.successful(Some(instance1_1))
@@ -204,7 +231,24 @@ class DeploymentActorTest extends AkkaUnitTest with GroupCreation {
       plan.steps.zipWithIndex.foreach {
         case (step, num) => managerProbe.expectMsg(5.seconds, DeploymentStepInfo(plan, step, num + 1))
       }
-      managerProbe.expectMsg(5.seconds, DeploymentFinished(plan, Success(Done)))
+      managerProbe.expectMsg(5.seconds, HealthStatusRequest(app.id))
+      tracker.specInstancesSync(app.id) returns Seq(instance1_1, instance1_2)
+      system.eventStream.publish(HealthStatusResponse(Map(
+        instance1_1.instanceId -> Seq(Health(instance1_1.instanceId).update(Healthy(null, null))),
+        instance1_2.instanceId -> Seq(Health(instance1_2.instanceId).update(Healthy(null, null))))))
+      managerProbe.expectMsg(15.seconds, HealthStatusRequest(app.id))
+      tracker.specInstancesSync(app.id) returns Seq(instance1_1_new, instance1_2_new, instance1_1, instance1_2)
+      system.eventStream.publish(HealthStatusResponse(Map(
+        instance1_1.instanceId -> Seq(Health(instance1_1.instanceId).update(Healthy(null, null))),
+        instance1_2.instanceId -> Seq(Health(instance1_2.instanceId).update(Healthy(null, null))),
+        instance1_1_new.instanceId -> Seq(Health(instance1_1_new.instanceId).update(Healthy(null, null))),
+        instance1_2_new.instanceId -> Seq(Health(instance1_2_new.instanceId).update(Healthy(null, null))))))
+      managerProbe.expectMsg(15.seconds, HealthStatusRequest(app.id))
+      tracker.specInstancesSync(app.id) returns Seq(instance1_1_new, instance1_2_new)
+      system.eventStream.publish(HealthStatusResponse(Map(
+        instance1_1_new.instanceId -> Seq(Health(instance1_1_new.instanceId).update(Healthy(null, null))),
+        instance1_2_new.instanceId -> Seq(Health(instance1_2_new.instanceId).update(Healthy(null, null))))))
+      managerProbe.expectMsg(60.seconds, DeploymentFinished(plan, Success(Done)))
 
       verify(tracker).setGoal(instance1_1.instanceId, Goal.Decommissioned, GoalChangeReason.Upgrading)
       verify(tracker).setGoal(instance1_2.instanceId, Goal.Decommissioned, GoalChangeReason.Upgrading)
