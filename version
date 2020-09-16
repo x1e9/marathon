@@ -8,7 +8,7 @@ MAJOR=1
 MINOR=9
 BRANCH_POINT=8228cea
 PREVIOUS_BRANCH=origin/releases/1.$(($MINOR - 1))
-REF=HEAD
+REF=b9c86683866
 
 declare -a OTHERARGS
 help() {
