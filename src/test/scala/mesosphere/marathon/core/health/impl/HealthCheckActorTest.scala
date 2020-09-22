@@ -46,7 +46,7 @@ class HealthCheckActorTest extends AkkaUnitTest {
     val healthCheckWorkerHub: Sink[(AppDefinition, Instance, MarathonHealthCheck, ActorRef), NotUsed] =
       MergeHub
         .source[(AppDefinition, Instance, MarathonHealthCheck, ActorRef)](1)
-        .map { case (_, instance, _, ref) => ref ! Healthy(instance.instanceId, Timestamp.now()) }
+        .map { case (_, instance, _, ref) => ref ! Healthy(instance.instanceId, instance.appTask.taskId, Timestamp.now()) }
         .to(Sink.ignore)
         .run()
 
@@ -58,8 +58,9 @@ class HealthCheckActorTest extends AkkaUnitTest {
       Props(
         new HealthCheckActor(app, appHealthCheckActor.ref, killService, healthCheck, instanceTracker, system.eventStream, healthCheckWorkerHub) {
           instances.map(instance => {
-            healthByInstanceId += (instance.instanceId -> Health(instance.instanceId)
-              .update(Healthy(instance.instanceId, instance.runSpecVersion)))
+            val taskId = instance.appTask.taskId
+            healthByTaskId += (taskId -> Health(instance.instanceId)
+              .update(Healthy(instance.instanceId, taskId, instance.runSpecVersion)))
           })
         }
       )

@@ -691,14 +691,14 @@ class TaskReplaceActorTest extends AkkaUnitTest with Eventually {
       val bad_instance = f.runningInstance(otherApp)
       val good_instance = f.runningInstance(app)
       f.tracker.specInstancesSync(app.id) returns Seq(good_instance)
-      ref ! HealthStatusResponse(Map(bad_instance.instanceId -> Seq(Health(bad_instance.instanceId).update(Healthy(null, null)))))
+      ref ! HealthStatusResponse(Map(bad_instance.instanceId -> Seq(Health(bad_instance.instanceId).update(Healthy(null, null, null)))))
 
       eventually {
         verify(f.tracker, never).setGoal(any, any, any)
         verify(f.tracker, never).setGoal(any, any, any)
       }
 
-      ref ! HealthStatusResponse(Map(good_instance.instanceId -> Seq(Health(good_instance.instanceId).update(Healthy(null, null)))))
+      ref ! HealthStatusResponse(Map(good_instance.instanceId -> Seq(Health(good_instance.instanceId).update(Healthy(null, null, null)))))
       promise.future.futureValue
       expectTerminated(ref)
     }
@@ -756,11 +756,11 @@ class TaskReplaceActorTest extends AkkaUnitTest with Eventually {
     def sendState(app: AppDefinition, newApp: AppDefinition, ref: ActorRef, oldInstances: Seq[Instance], newInstances: Seq[Instance], oldRunning: Int, newRunning: Int, newUnhealthy: Int = 0) = {
       var map = Map[Instance.Id, Seq[Health]]()
       for (i <- 0 until oldRunning)
-        map += (oldInstances(i).instanceId -> Seq(Health(oldInstances(i).instanceId).update(Healthy(null, null))))
+        map += (oldInstances(i).instanceId -> Seq(Health(oldInstances(i).instanceId).update(Healthy(null, null, null))))
       for (i <- 0 until newRunning)
-        map += (newInstances(i).instanceId -> Seq(Health(newInstances(i).instanceId).update(Healthy(null, null))))
+        map += (newInstances(i).instanceId -> Seq(Health(newInstances(i).instanceId).update(Healthy(null, null, null))))
       for (i <- 0 until newUnhealthy)
-        map += (newInstances(i + newRunning).instanceId -> Seq(Health(newInstances(i + newRunning).instanceId).update(Unhealthy(null, null, ""))))
+        map += (newInstances(i + newRunning).instanceId -> Seq(Health(newInstances(i + newRunning).instanceId).update(Unhealthy(null, null, null, ""))))
       tracker.specInstancesSync(app.id) returns oldInstances.take(oldRunning) ++ newInstances.take(newRunning + newUnhealthy)
       ref ! HealthStatusResponse(map)
     }
