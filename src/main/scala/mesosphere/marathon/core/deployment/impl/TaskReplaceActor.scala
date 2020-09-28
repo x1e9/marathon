@@ -90,7 +90,7 @@ class TaskReplaceActor(
 
     val restartStrategy = computeRestartStrategy(runSpec, state)
 
-    logger.info(s"restartStrategy gives : to_kill=>${restartStrategy.nrToKillImmediately} to_start=>${restartStrategy.nrToStartImmediately}")
+    logger.info(s"restartStrategy for ${pathId} gives : to_kill=>${restartStrategy.nrToKillImmediately} to_start=>${restartStrategy.nrToStartImmediately}")
 
     // kill old instances to free some capacity
     for (_ <- 0 until restartStrategy.nrToKillImmediately) killNextOldInstance(toKill)
