@@ -14,4 +14,13 @@ trait HealthConversion extends DefaultConversions {
       lastFailureCause = health.lastFailureCause
     )
   }
+
+  implicit val healthCheckShieldRamlWriter: Writes[core.health.HealthCheckShield, HealthCheckShield] = Writes { hcs =>
+    HealthCheckShield(
+      taskId = hcs.taskId.idString,
+      until = hcs.until.toRaml
+    )
+  }
 }
+
+object HealthConversion extends HealthConversion

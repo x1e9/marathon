@@ -29,7 +29,8 @@ private[health] class HealthCheckActor(
     healthCheck: HealthCheck,
     instanceTracker: InstanceTracker,
     eventBus: EventStream,
-    healthCheckHub: Sink[(AppDefinition, Instance, MarathonHealthCheck, ActorRef), NotUsed])
+    healthCheckHub: Sink[(AppDefinition, Instance, MarathonHealthCheck, ActorRef), NotUsed],
+    healthCheckShieldManager: HealthCheckShieldManager)
   extends Actor with StrictLogging {
 
   implicit val mat = ActorMaterializer()
@@ -116,6 +117,12 @@ private[health] class HealthCheckActor(
           logger.info(s"[anti-snowball] app ${app.id} version ${app.version} Won't kill $instanceId because too few instances are running")
           return
         }
+
+        if (healthCheckShieldManager.isShielded(instance.appTask.taskId)) {
+          logger.info(s"[health-check-shield] app ${app.id} version ${app.version}. Won't kill $instanceId because the shield is enabled")
+          return
+        }
+
         logger.info(s"Send kill request for $instanceId on host ${instance.hostname.getOrElse("unknown")} to driver")
         val taskId = instance.appTask.taskId
         eventBus.publish(
@@ -253,7 +260,8 @@ object HealthCheckActor {
     healthCheck: HealthCheck,
     instanceTracker: InstanceTracker,
     eventBus: EventStream,
-    healthCheckHub: Sink[(AppDefinition, Instance, MarathonHealthCheck, ActorRef), NotUsed]): Props = {
+    healthCheckHub: Sink[(AppDefinition, Instance, MarathonHealthCheck, ActorRef), NotUsed],
+    healthCheckShieldManager: HealthCheckShieldManager): Props = {
 
     Props(new HealthCheckActor(
       app,
@@ -262,7 +270,8 @@ object HealthCheckActor {
       healthCheck,
       instanceTracker,
       eventBus,
-      healthCheckHub))
+      healthCheckHub,
+      healthCheckShieldManager))
   }
 
   // self-sent every healthCheck.intervalSeconds

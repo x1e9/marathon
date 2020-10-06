@@ -23,7 +23,7 @@ import mesosphere.util.RWLock
 import org.apache.mesos.Protos.TaskStatus
 
 import scala.async.Async._
-import scala.collection.immutable.{Map, Seq}
+import scala.collection.immutable.Map
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -36,7 +36,8 @@ class MarathonHealthCheckManager(
     eventBus: EventStream,
     instanceTracker: InstanceTracker,
     groupManager: GroupManager,
-    conf: MarathonConf)(implicit mat: ActorMaterializer) extends HealthCheckManager with StrictLogging {
+    conf: MarathonConf,
+    healthCheckShieldManager: HealthCheckShieldManager)(implicit mat: ActorMaterializer) extends HealthCheckManager with StrictLogging {
 
   protected[this] case class ActiveHealthCheck(
       healthCheck: HealthCheck,
@@ -86,6 +87,18 @@ class MarathonHealthCheckManager(
       ahcs(appId)(appVersion)
     }
 
+  override def enableShield(taskId: Task.Id, duration: FiniteDuration): Future[Done] = {
+    healthCheckShieldManager.enableShield(taskId, duration)
+  }
+
+  override def disableShield(taskId: Task.Id): Future[Done] = {
+    healthCheckShieldManager.disableShield(taskId)
+  }
+
+  override def listShields(): Future[Seq[HealthCheckShield]] = {
+    healthCheckShieldManager.getShields()
+  }
+
   override def add(app: AppDefinition, healthCheck: HealthCheck, instances: Seq[Instance]): Unit =
     appHealthChecks.writeLock { ahcs =>
       val healthChecksForApp = listActive(app.id, app.version)
@@ -96,7 +109,7 @@ class MarathonHealthCheckManager(
         logger.info(s"Adding health check for app [${app.id}] and version [${app.version}]: [$healthCheck]")
 
         val ref = actorRefFactory.actorOf(
-          HealthCheckActor.props(app, appHealthChecksActor, killService, healthCheck, instanceTracker, eventBus, healthCheckWorkerHub))
+          HealthCheckActor.props(app, appHealthChecksActor, killService, healthCheck, instanceTracker, eventBus, healthCheckWorkerHub, healthCheckShieldManager))
         val newHealthChecksForApp =
           healthChecksForApp + ActiveHealthCheck(healthCheck, ref)
 

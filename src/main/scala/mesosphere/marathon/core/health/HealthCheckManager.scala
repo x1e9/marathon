@@ -4,10 +4,12 @@ package core.health
 import akka.Done
 import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.state.{AbsolutePathId, AppDefinition, Timestamp}
+import mesosphere.marathon.core.task.Task
 import org.apache.mesos.Protos.TaskStatus
 
-import scala.collection.immutable.{Map, Seq}
+import scala.collection.immutable.Map
 import scala.concurrent.Future
+import scala.concurrent.duration._
 
 trait HealthCheckManager {
 
@@ -61,4 +63,10 @@ trait HealthCheckManager {
     * Returns the health status of all instances of the supplied app.
     */
   def statuses(appId: AbsolutePathId): Future[Map[Instance.Id, Seq[Health]]]
+
+  def enableShield(taskId: Task.Id, duration: FiniteDuration): Future[Done]
+
+  def disableShield(taskId: Task.Id): Future[Done]
+
+  def listShields(): Future[Seq[HealthCheckShield]]
 }

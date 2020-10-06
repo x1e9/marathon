@@ -23,6 +23,7 @@ trait StorageModule {
   val instanceRepository: InstanceRepository
   val deploymentRepository: DeploymentRepository
   val taskFailureRepository: TaskFailureRepository
+  val healthCheckShieldRepository: HealthCheckShieldRepository
   val groupRepository: GroupRepository
   val frameworkIdRepository: FrameworkIdRepository
   val runtimeConfigurationRepository: RuntimeConfigurationRepository
@@ -57,6 +58,7 @@ object StorageModule {
         val deploymentRepository = DeploymentRepository.zkRepository(metrics, store, groupRepository,
           appRepository, podRepository, zk.maxVersions, zk.storageCompactionScanBatchSize, zk.storageCompactionInterval)
         val taskFailureRepository = TaskFailureRepository.zkRepository(store)
+        val healthCheckShieldRepository = HealthCheckShieldRepository.zkRepository(store)
         val frameworkIdRepository = FrameworkIdRepository.zkRepository(store)
         val runtimeConfigurationRepository = RuntimeConfigurationRepository.zkRepository(store)
 
@@ -70,13 +72,14 @@ object StorageModule {
         val backup = PersistentStoreBackup(store)
         val migration = new Migration(zk.availableFeatures, defaultMesosRole, store, appRepository, podRepository, groupRepository,
           deploymentRepository, instanceRepository,
-          taskFailureRepository, frameworkIdRepository, ServiceDefinitionRepository.zkRepository(store), runtimeConfigurationRepository, backup, config)
+          taskFailureRepository, healthCheckShieldRepository, frameworkIdRepository, ServiceDefinitionRepository.zkRepository(store), runtimeConfigurationRepository, backup, config)
 
         StorageModuleImpl(
           store,
           instanceRepository,
           deploymentRepository,
           taskFailureRepository,
+          healthCheckShieldRepository,
           groupRepository,
           frameworkIdRepository,
           runtimeConfigurationRepository,
@@ -93,6 +96,7 @@ object StorageModule {
         val deploymentRepository = DeploymentRepository.inMemRepository(metrics, store, groupRepository,
           appRepository, podRepository, mem.maxVersions, mem.storageCompactionScanBatchSize)
         val taskFailureRepository = TaskFailureRepository.inMemRepository(store)
+        val healthCheckShieldRepository = HealthCheckShieldRepository.inMemRepository(store)
         val frameworkIdRepository = FrameworkIdRepository.inMemRepository(store)
         val runtimeConfigurationRepository = RuntimeConfigurationRepository.inMemRepository(store)
 
@@ -106,13 +110,14 @@ object StorageModule {
         val backup = PersistentStoreBackup(store)
         val migration = new Migration(mem.availableFeatures, defaultMesosRole, ???, appRepository, podRepository, groupRepository,
           deploymentRepository, instanceRepository,
-          taskFailureRepository, frameworkIdRepository, ServiceDefinitionRepository.inMemRepository(store), runtimeConfigurationRepository, backup, config)
+          taskFailureRepository, healthCheckShieldRepository, frameworkIdRepository, ServiceDefinitionRepository.inMemRepository(store), runtimeConfigurationRepository, backup, config)
 
         StorageModuleImpl(
           store,
           instanceRepository,
           deploymentRepository,
           taskFailureRepository,
+          healthCheckShieldRepository,
           groupRepository,
           frameworkIdRepository,
           runtimeConfigurationRepository,
@@ -129,6 +134,7 @@ private[storage] case class StorageModuleImpl(
     instanceRepository: InstanceRepository,
     deploymentRepository: DeploymentRepository,
     taskFailureRepository: TaskFailureRepository,
+    healthCheckShieldRepository: HealthCheckShieldRepository,
     groupRepository: GroupRepository,
     frameworkIdRepository: FrameworkIdRepository,
     runtimeConfigurationRepository: RuntimeConfigurationRepository,

@@ -8,13 +8,14 @@ import akka.stream.scaladsl.{MergeHub, Sink}
 import akka.testkit._
 import mesosphere.AkkaUnitTest
 import mesosphere.marathon.core.health.impl.AppHealthCheckActor.PurgeHealthCheckStatuses
-import mesosphere.marathon.core.health.{Health, HealthCheck, Healthy, MarathonHealthCheck, MarathonHttpHealthCheck, PortReference}
+import mesosphere.marathon.core.health.{HealthCheckShieldConf, Health, HealthCheck, Healthy, MarathonHealthCheck, MarathonHttpHealthCheck, PortReference}
 import mesosphere.marathon.core.instance.{Instance, TestInstanceBuilder}
 import mesosphere.marathon.core.task.Task
 import mesosphere.marathon.core.task.termination.{KillReason, KillService}
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.state.{AbsolutePathId, AppDefinition, Timestamp}
 import org.mockito.Mockito.verifyNoMoreInteractions
+import mesosphere.marathon.storage.repository.HealthCheckShieldRepository
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -51,13 +52,17 @@ class HealthCheckActorTest extends AkkaUnitTest {
         .to(Sink.ignore)
         .run()
 
+    val healthCheckShieldRepository = mock[HealthCheckShieldRepository]
+    val healthCheckShieldConf = mock[HealthCheckShieldConf]
+    val healthCheckShieldManager = new HealthCheckShieldManager(healthCheckShieldRepository, healthCheckShieldConf)
+
     def runningInstance(): Instance = {
       TestInstanceBuilder.newBuilder(appId).addTaskRunning().getInstance()
     }
 
     def actor(healthCheck: HealthCheck, instances: Seq[Instance], app: AppDefinition = app) = TestActorRef[HealthCheckActor](
       Props(
-        new HealthCheckActor(app, appHealthCheckActor.ref, killService, healthCheck, instanceTracker, system.eventStream, healthCheckWorkerHub) {
+        new HealthCheckActor(app, appHealthCheckActor.ref, killService, healthCheck, instanceTracker, system.eventStream, healthCheckWorkerHub, healthCheckShieldManager) {
           instances.map(instance => {
             val taskId = instance.appTask.taskId
             healthByTaskId += (taskId -> Health(instance.instanceId)
@@ -76,7 +81,8 @@ class HealthCheckActorTest extends AkkaUnitTest {
           healthCheck,
           instanceTracker,
           system.eventStream,
-          healthCheckWorkerHub) {
+          healthCheckWorkerHub,
+          healthCheckShieldManager) {
         }
       )
     )

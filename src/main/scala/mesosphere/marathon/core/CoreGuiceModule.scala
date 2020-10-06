@@ -142,6 +142,11 @@ class CoreGuiceModule(cliConf: MarathonConf) extends AbstractModule {
 
   @Provides
   @Singleton
+  def healthCheckShieldRepository(coreModule: CoreModule): HealthCheckShieldRepository =
+    coreModule.storageModule.healthCheckShieldRepository
+
+  @Provides
+  @Singleton
   def groupRepository(coreModule: CoreModule): GroupRepository =
     coreModule.storageModule.groupRepository
 

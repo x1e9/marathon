@@ -33,3 +33,8 @@ tools/packager/toor
 tools/packager/fpm-docker/.provisioned
 dcos-registry-*
 .envrc
+.bloop/
+.metals/
+.vscode/
+metals.sbt
+.env

@@ -54,6 +54,7 @@ class Migration(
     private[migration] val deploymentRepository: DeploymentRepository,
     private[migration] val instanceRepo: InstanceRepository,
     private[migration] val taskFailureRepo: TaskFailureRepository,
+    private[migration] val healthCheckShieldRepository: HealthCheckShieldRepository,
     private[migration] val frameworkIdRepo: FrameworkIdRepository,
     private[migration] val serviceDefinitionRepo: ServiceDefinitionRepository,
     private[migration] val runtimeConfigurationRepository: RuntimeConfigurationRepository,

@@ -45,6 +45,7 @@ class MarathonHealthCheckManagerTest extends AkkaUnitTest with Eventually {
     implicit val eventStream: EventStream = new EventStream(system)
     val killService: KillService = mock[KillService]
     val conf = MarathonTestHelper.defaultConfig()
+    val healthCheckShieldManager = mock[HealthCheckShieldManager];
 
     implicit val hcManager: MarathonHealthCheckManager = new MarathonHealthCheckManager(
       system,
@@ -52,7 +53,8 @@ class MarathonHealthCheckManagerTest extends AkkaUnitTest with Eventually {
       eventStream,
       instanceTracker,
       groupManager,
-      conf
+      conf,
+      healthCheckShieldManager
     )
   }
 

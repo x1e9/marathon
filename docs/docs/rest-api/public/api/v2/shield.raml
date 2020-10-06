@@ -1,0 +1,73 @@
+description: |
+  API to control health check shields feature
+
+/:
+  description: |
+    List current health check shields
+  get:
+    description: |
+      Lists all health check shields currently saved in the persistence storage.
+      Note that some shields could already be expired because the purge is done periodically.
+    responses:
+      200:
+        description: |
+          Json array containing the shield id and the timestamp when it will expire.
+        body:
+          application/json:
+            type: healthCheck.HealthCheckShield[]
+            example: !include examples/health-check-shield-get.json
+      403:
+        description: |
+          Health check shield API is disabled.
+
+/{taskId}:
+  description: |
+    Create, update, or delete a health check shield
+  uriParameters:
+    taskId:
+      type: strings.TaskId
+      description: |
+        Id of the task, as displayed in the Marathon UI
+
+  put:
+    description: |
+      Create or update the shield for the specified task.
+      The shield prevents Marathon from killing the task in case the health check is red.
+      The primary usage is troubleshooting scenarios when the app is unresponsive, for instance taking a memory snapshot.
+      Note that the shield operates on task level. After the corresponding Mesos container is gone the shield is useless.
+      Marathon could still kill the instance for another reason like deployment.
+      Mesos health checks are not supported as Mesos would kill the app without asking Marathon.
+    is: [ secured ]
+    queryParameters:
+      duration:
+        required: false
+        description: |
+          For how long the shield should be enabled
+        type: string
+        default: 30 minutes
+    responses:
+      200:
+        description: |
+          The shield was successfully created or updated.
+      400:
+        description: |
+          The duration is larger than configured maximum.
+      403:
+        description: |
+          Rights are not sufficient or the health check shield API is disabled.
+      404:
+        description: |
+          The task id points to the non-existent application.
+
+  delete:
+    description: |
+      Deletes previously created shield.
+      The response code will still be <code>200</code> even if the shield didn't exist.
+    is: [ secured ]
+    responses:
+      200:
+        description: |
+          The shield was deleted successfully.
+      403:
+        description: |
+          Rights are not sufficient or the health check shield API is disabled.

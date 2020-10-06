@@ -25,7 +25,7 @@ uses:
   metrics: v2/types/metrics.raml
   logging: v2/types/logging.raml
   runtimeConfig: v2/types/runtimeConfiguration.raml
-
+  healthCheck: v2/types/healthCheck.raml
 
 traits: !include traits.raml
 
@@ -33,6 +33,9 @@ traits: !include traits.raml
 #documentation:
 # - title: Using the Marathon REST API
 #   content: Make me real!
+
+# criteo endpoints
+/v2/shield: !include v2/shield.raml
 
 # considered ofthen used endpoints in alphabetical order
 /v2/apps: !include v2/apps.raml

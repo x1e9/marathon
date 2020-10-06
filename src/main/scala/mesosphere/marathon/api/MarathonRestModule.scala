@@ -58,6 +58,7 @@ class MarathonRestModule() extends AbstractModule {
     bind(classOf[v2.LeaderResource]).in(Scopes.SINGLETON)
     bind(classOf[v2.DeploymentsResource]).in(Scopes.SINGLETON)
     bind(classOf[v2.PluginsResource]).in(Scopes.SINGLETON)
+    bind(classOf[v2.HealthCheckShieldResource]).in(Scopes.SINGLETON)
 
     bind(classOf[CORSFilter]).asEagerSingleton()
     bind(classOf[CacheDisablingFilter]).asEagerSingleton()
@@ -84,11 +85,12 @@ class MarathonRestModule() extends AbstractModule {
     infoResource: v2.InfoResource,
     leaderResource: v2.LeaderResource,
     deploymentsResource: v2.DeploymentsResource,
-    pluginsResource: v2.PluginsResource): RootApplication = {
+    pluginsResource: v2.PluginsResource,
+    HealthCheckShieldResource: v2.HealthCheckShieldResource): RootApplication = {
 
     new RootApplication(
       Seq(marathonExceptionMapper),
       List(systemResource, appsResource, podsResource, tasksResource, queueResource, groupsResource,
-        infoResource, leaderResource, deploymentsResource, pluginsResource))
+        infoResource, leaderResource, deploymentsResource, pluginsResource, HealthCheckShieldResource))
   }
 }

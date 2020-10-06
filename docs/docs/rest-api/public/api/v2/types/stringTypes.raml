@@ -1,5 +1,8 @@
 #%RAML 1.0 Library
 types:
+  TaskId:
+    type: string
+    pattern: ^((.+)([\._])([^_\.]+))|((.+)([\._])([^_\.]+)(\.)(\d+))|((.+)\.(instance-|marathon-)([^_\.]+)[\._]([^\.]+))|((.+)\.(instance-|marathon-)([^_\.]+)[\._]([^\.]+)\.(\d+))$
   InstanceId:
     type: string
     pattern: ^(.+)\.(instance-|marathon-)([^\.]+)$

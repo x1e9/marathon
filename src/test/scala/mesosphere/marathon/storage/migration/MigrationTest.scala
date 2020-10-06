@@ -33,6 +33,7 @@ class MigrationTest extends AkkaUnitTest with Mockito with GivenWhenThen with Ev
     private val deploymentRepository: DeploymentRepository = mock[DeploymentRepository]
     private val instanceRepository: InstanceRepository = mock[InstanceRepository]
     private val taskFailureRepository: TaskFailureRepository = mock[TaskFailureRepository]
+    private val healthCheckShieldRepository: HealthCheckShieldRepository = mock[HealthCheckShieldRepository]
     private val frameworkIdRepository: FrameworkIdRepository = mock[FrameworkIdRepository]
     private val configurationRepository: RuntimeConfigurationRepository = mock[RuntimeConfigurationRepository]
     private val backup: PersistentStoreBackup = mock[PersistentStoreBackup]
@@ -47,7 +48,7 @@ class MigrationTest extends AkkaUnitTest with Mockito with GivenWhenThen with Ev
     val notificationCounter = new AtomicInteger(0)
     val migrationSteps = if (fakeMigrations.nonEmpty) fakeMigrations else Migration.steps
     val migration = new Migration(Set.empty, "mesos-role", persistenceStore, appRepository, podRepository, groupRepository, deploymentRepository,
-      instanceRepository, taskFailureRepository, frameworkIdRepository,
+      instanceRepository, taskFailureRepository, healthCheckShieldRepository, frameworkIdRepository,
       serviceDefinitionRepository, configurationRepository, backup, config, migrationSteps) {
 
       override protected def notifyMigrationInProgress(from: StorageVersion, migrateVersion: StorageVersion): Unit =

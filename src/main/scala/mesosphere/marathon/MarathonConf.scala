@@ -23,6 +23,7 @@ import mesosphere.marathon.state.ResourceRole
 import mesosphere.marathon.storage.StorageConf
 import mesosphere.mesos.MatcherConf
 import org.rogach.scallop.{ScallopConf, ScallopOption, ValueConverter}
+import mesosphere.marathon.core.health.HealthCheckShieldConf
 
 import scala.sys.SystemProperties
 
@@ -42,7 +43,7 @@ trait MarathonConf
   with LeaderProxyConf with MarathonSchedulerServiceConfig with OfferMatcherManagerConfig with OfferProcessorConfig
   with PluginManagerConfiguration with ReviveOffersConfig with StorageConf with KillConfig
   with TaskJobsConfig with TaskStatusUpdateConfig with InstanceTrackerConfig with DeploymentConfig with ZookeeperConf
-  with MatcherConf with AppInfoConfig with MetricsConf {
+  with MatcherConf with AppInfoConfig with MetricsConf with HealthCheckShieldConf {
 
   import MarathonConf._
   lazy val mesosMaster = opt[MesosMasterConnection](
