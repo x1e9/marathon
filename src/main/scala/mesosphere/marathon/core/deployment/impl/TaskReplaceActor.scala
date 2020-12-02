@@ -80,12 +80,26 @@ class TaskReplaceActor(
     instancesByIncarnation._1.sortBy(_.appTask.status.stagedAt) ++ instancesByIncarnation._2
   }
 
+  // Return the number of non running old instances killed
+  def killNonRunningOldInstances(oldInstances: Seq[Instance]): Integer = {
+    val nonRunningOldInstances = oldInstances.filter(!_.isRunning).to[mutable.Queue]
+    val nonRunningOldInstancesCount = nonRunningOldInstances.size
+    for (_ <- 0 until nonRunningOldInstancesCount) killNextOldInstance(nonRunningOldInstances)
+    return nonRunningOldInstancesCount
+  }
+
   def step(health: Map[Instance.Id, Seq[Health]]): Unit = {
     logger.debug(s"---=== DEPLOYMENT STEP FOR ${pathId} ===---")
     val current_instances = instanceTracker.specInstancesSync(pathId).partition(_.runSpecVersion == runSpec.version)
 
     val new_instances = current_instances._1.partition(isHealthy(_, health))
     val old_instances = current_instances._2.partition(isHealthy(_, health))
+
+    if (killNonRunningOldInstances(old_instances._2) > 0) {
+      logger.info("Found and killed non running instances from a previous, likely failing, deployment. Was a new deployment applied forcefully?")
+      logger.info("Aborting current deployment step and waiting for the next one.")
+      return
+    }
 
     // make sure we kill in order:
     // - instances with unhealthy tasks
