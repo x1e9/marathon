@@ -111,6 +111,7 @@ case class TestTaskBuilder(task: Option[Task], instanceBuilder: TestInstanceBuil
 
   def mesosStatusForCondition(condition: Condition, taskId: Task.Id): Option[mesos.Protos.TaskStatus] =
     condition match {
+      case Condition.Scheduled => None
       case Condition.Provisioned => None
       case Condition.Dropped => Some(MesosTaskStatusTestHelper.dropped(taskId))
       case Condition.Error => Some(MesosTaskStatusTestHelper.error(taskId))
@@ -179,6 +180,9 @@ case class TestTaskBuilder(task: Option[Task], instanceBuilder: TestInstanceBuil
     this.copy(task = Some(TestTaskBuilder.Helper.startingTaskForApp(
       instance.instanceId, stagedAt = stagedAt.millis, container = maybeMesosContainerByName(containerName))))
   }
+
+  def taskScheduled(since: Timestamp = now, containerName: Option[String] = None): TestTaskBuilder =
+    createTask(since, containerName, Condition.Scheduled)
 
   private def createTask(since: Timestamp, containerName: Option[String], condition: Condition) = {
     val instance = instanceBuilder.getInstance()

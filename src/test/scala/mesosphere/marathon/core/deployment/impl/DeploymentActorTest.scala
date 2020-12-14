@@ -309,5 +309,38 @@ class DeploymentActorTest extends AkkaUnitTest with GroupCreation {
       verify(tracker, once).setGoal(any, any, any)
       verify(tracker).setGoal(instance1_2.instanceId, Goal.Decommissioned, GoalChangeReason.DeploymentScaling)
     }
+
+    "Scale down with unscheduled instance" in new Fixture {
+      val managerProbe = TestProbe()
+      val app1 = AppDefinition(id = AbsolutePathId("/foo/app1"), role = "*", cmd = Some("cmd"), instances = 3)
+      val origGroup = createRootGroup(groups = Set(createGroup(AbsolutePathId("/foo"), Map(app1.id -> app1))))
+
+      val version2 = VersionInfo.forNewConfig(Timestamp(1000))
+      val app1New = app1.copy(instances = 2, versionInfo = version2)
+
+      val targetGroup = createRootGroup(groups = Set(createGroup(AbsolutePathId("/foo"), Map(app1New.id -> app1New))))
+
+      val instance1_1 = TestInstanceBuilder.newBuilder(app1.id, version = app1.version).addTaskRunning(startedAt = Timestamp.zero).getInstance()
+      val instance1_2 = TestInstanceBuilder.newBuilder(app1.id, version = app1.version).addTaskScheduled(since = Timestamp(500)).getInstance()
+      val instance1_3 = TestInstanceBuilder.newBuilder(app1.id, version = app1.version).addTaskRunning(startedAt = Timestamp(1000)).getInstance()
+
+      val plan = DeploymentPlan(original = origGroup, target = targetGroup)
+
+      tracker.specInstances(Matchers.eq(app1.id), Matchers.eq(false))(any[ExecutionContext]) returns Future.successful(Seq(instance1_1, instance1_2, instance1_3))
+      tracker.get(instance1_1.instanceId).returns(Future.successful(Some(instance1_1)))
+      tracker.get(instance1_2.instanceId).returns(Future.successful(Some(instance1_2)))
+      tracker.get(instance1_3.instanceId).returns(Future.successful(Some(instance1_3)))
+
+      deploymentActor(managerProbe.ref, plan)
+
+      plan.steps.zipWithIndex.foreach {
+        case (step, num) => managerProbe.expectMsg(5.seconds, DeploymentStepInfo(plan, step, num + 1))
+      }
+
+      managerProbe.expectMsg(5.seconds, DeploymentFinished(plan, Success(Done)))
+
+      verify(tracker, once).setGoal(any, any, any)
+      verify(tracker).setGoal(instance1_2.instanceId, Goal.Decommissioned, GoalChangeReason.DeploymentScaling)
+    }
   }
 }

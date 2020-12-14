@@ -166,8 +166,17 @@ private class DeploymentActor(
 
     async {
       val instances = await(instanceTracker.specInstances(runnableSpec.id))
+      val unscheduledInstances = instances.filter(_.isScheduled)
       val ScalingProposition(instancesToDecommission, tasksToStart) = ScalingProposition.propose(
-        instances, toKill, killToMeetConstraints, scaleTo, runnableSpec.killSelection, runnableSpec.id)
+        // - If a user chose to kill a few instances and scale down, toKill
+        //   contains the list of selected instances.
+        // - If the user chose to scale down/up, without selecting instances to
+        //   kill, toKill is an empty list.
+        //
+        // Marathon will propose to decommission in priority instances in
+        // toKill, before selecting running instances if needed to meet the
+        // scaling objective.
+        instances, toKill.union(unscheduledInstances).distinct, killToMeetConstraints, scaleTo, runnableSpec.killSelection, runnableSpec.id)
 
       logger.debug("Kill tasks if needed")
       await(decommissionInstances(instancesToDecommission))

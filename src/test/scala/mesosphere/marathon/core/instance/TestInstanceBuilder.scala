@@ -78,6 +78,9 @@ case class TestInstanceBuilder(instance: Instance, now: Timestamp = Timestamp.no
     containerName: Option[String] = None): TestInstanceBuilder =
     addTaskWithBuilder().taskStaged(containerName, stagedAt, version).build()
 
+  def addTaskScheduled(since: Timestamp = now, containerName: Option[String] = None): TestInstanceBuilder =
+    addTaskWithBuilder().taskScheduled(since, containerName).build()
+
   def addTaskWithBuilder(): TestTaskBuilder = TestTaskBuilder.newBuilder(this)
 
   private[instance] def addTask(task: Task): TestInstanceBuilder = {
