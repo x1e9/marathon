@@ -13,7 +13,7 @@ import mesosphere.marathon.core.instance.{Goal, GoalChangeReason, Instance}
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.readiness.ReadinessCheckExecutor
 import mesosphere.marathon.core.task.tracker.InstanceTracker
-import mesosphere.marathon.state.RunSpec
+import mesosphere.marathon.state.{RunSpec,Timestamp}
 
 import scala.async.Async.{async, await}
 import scala.collection.mutable
@@ -34,6 +34,7 @@ class TaskReplaceActor(
 
   def deploymentId = status.plan.id
   def pathId = runSpec.id
+  val actorStart = Timestamp.now
 
   private[this] var tick: Cancellable = null
 
@@ -80,6 +81,12 @@ class TaskReplaceActor(
     instancesByIncarnation._1.sortBy(_.appTask.status.stagedAt) ++ instancesByIncarnation._2
   }
 
+  // find instances with tasks staged after the TaskReplaceActor started
+  def findInstancesStagedAfterActorStart(instances: Seq[Instance]): Seq[Instance] = {
+    val instancesByIncarnation = instances.partition(_.tasksMap.size != 0)
+    instancesByIncarnation._1.filter(_.appTask.status.stagedAt.after(actorStart))
+  }
+
   // Return the number of non running old instances killed
   def killNonRunningOldInstances(oldInstances: Seq[Instance]): Integer = {
     val nonRunningOldInstances = oldInstances.filter(!_.isRunning).to[mutable.Queue]
@@ -99,6 +106,12 @@ class TaskReplaceActor(
       logger.info("Found and killed non running instances from a previous, likely failing, deployment. Was a new deployment applied forcefully?")
       logger.info("Aborting current deployment step and waiting for the next one.")
       return
+    }
+
+    val tooRecentOldInstancesCount = findInstancesStagedAfterActorStart(current_instances._2).size
+
+    if (tooRecentOldInstancesCount > 0) {
+      logger.info(s"Found ${tooRecentOldInstancesCount} old instances with tasks staged after a new deployment started for ${pathId}")
     }
 
     // make sure we kill in order:
