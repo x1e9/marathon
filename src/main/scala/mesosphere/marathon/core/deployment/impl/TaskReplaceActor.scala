@@ -90,7 +90,7 @@ class TaskReplaceActor(
 
   def step(health: Map[Instance.Id, Seq[Health]]): Unit = {
     logger.debug(s"---=== DEPLOYMENT STEP FOR ${pathId} ===---")
-    val current_instances = instanceTracker.specInstancesSync(pathId).partition(_.runSpecVersion == runSpec.version)
+    val current_instances = instanceTracker.specInstancesSync(pathId, readAfterWrite = true).partition(_.runSpecVersion == runSpec.version)
 
     val new_instances = current_instances._1.partition(isHealthy(_, health))
     val old_instances = current_instances._2.partition(isHealthy(_, health))

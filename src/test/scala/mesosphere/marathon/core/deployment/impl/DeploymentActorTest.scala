@@ -176,16 +176,16 @@ class DeploymentActorTest extends AkkaUnitTest with GroupCreation {
       }
 
       managerProbe.expectMsg(5.seconds, HealthStatusRequest(app2.id))
-      tracker.specInstancesSync(app2.id) returns Seq(instance2_1)
+      tracker.specInstancesSync(app2.id, readAfterWrite = true) returns Seq(instance2_1)
       system.eventStream.publish(HealthStatusResponse(Map(instance2_1.instanceId -> Seq(Health(instance2_1.instanceId).update(Healthy(null, null, null))))))
       managerProbe.expectMsg(15.seconds, HealthStatusRequest(app2.id))
-      tracker.specInstancesSync(app2.id) returns Seq(instance2_1_new, instance2_2_new, instance2_1)
+      tracker.specInstancesSync(app2.id, readAfterWrite = true) returns Seq(instance2_1_new, instance2_2_new, instance2_1)
       system.eventStream.publish(HealthStatusResponse(Map(
         instance2_1.instanceId -> Seq(Health(instance2_1.instanceId).update(Healthy(null, null, null))),
         instance2_1_new.instanceId -> Seq(Health(instance2_1_new.instanceId).update(Healthy(null, null, null))),
         instance2_2_new.instanceId -> Seq(Health(instance2_2_new.instanceId).update(Healthy(null, null, null))))))
       managerProbe.expectMsg(15.seconds, HealthStatusRequest(app2.id))
-      tracker.specInstancesSync(app2.id) returns Seq(instance2_1_new, instance2_2_new)
+      tracker.specInstancesSync(app2.id, readAfterWrite = true) returns Seq(instance2_1_new, instance2_2_new)
       system.eventStream.publish(HealthStatusResponse(Map(
         instance2_1_new.instanceId -> Seq(Health(instance2_1_new.instanceId).update(Healthy(null, null, null))),
         instance2_2_new.instanceId -> Seq(Health(instance2_2_new.instanceId).update(Healthy(null, null, null))))))
@@ -232,19 +232,19 @@ class DeploymentActorTest extends AkkaUnitTest with GroupCreation {
         case (step, num) => managerProbe.expectMsg(5.seconds, DeploymentStepInfo(plan, step, num + 1))
       }
       managerProbe.expectMsg(5.seconds, HealthStatusRequest(app.id))
-      tracker.specInstancesSync(app.id) returns Seq(instance1_1, instance1_2)
+      tracker.specInstancesSync(app.id, readAfterWrite = true) returns Seq(instance1_1, instance1_2)
       system.eventStream.publish(HealthStatusResponse(Map(
         instance1_1.instanceId -> Seq(Health(instance1_1.instanceId).update(Healthy(null, null, null))),
         instance1_2.instanceId -> Seq(Health(instance1_2.instanceId).update(Healthy(null, null, null))))))
       managerProbe.expectMsg(15.seconds, HealthStatusRequest(app.id))
-      tracker.specInstancesSync(app.id) returns Seq(instance1_1_new, instance1_2_new, instance1_1, instance1_2)
+      tracker.specInstancesSync(app.id, readAfterWrite = true) returns Seq(instance1_1_new, instance1_2_new, instance1_1, instance1_2)
       system.eventStream.publish(HealthStatusResponse(Map(
         instance1_1.instanceId -> Seq(Health(instance1_1.instanceId).update(Healthy(null, null, null))),
         instance1_2.instanceId -> Seq(Health(instance1_2.instanceId).update(Healthy(null, null, null))),
         instance1_1_new.instanceId -> Seq(Health(instance1_1_new.instanceId).update(Healthy(null, null, null))),
         instance1_2_new.instanceId -> Seq(Health(instance1_2_new.instanceId).update(Healthy(null, null, null))))))
       managerProbe.expectMsg(15.seconds, HealthStatusRequest(app.id))
-      tracker.specInstancesSync(app.id) returns Seq(instance1_1_new, instance1_2_new)
+      tracker.specInstancesSync(app.id, readAfterWrite = true) returns Seq(instance1_1_new, instance1_2_new)
       system.eventStream.publish(HealthStatusResponse(Map(
         instance1_1_new.instanceId -> Seq(Health(instance1_1_new.instanceId).update(Healthy(null, null, null))),
         instance1_2_new.instanceId -> Seq(Health(instance1_2_new.instanceId).update(Healthy(null, null, null))))))
@@ -267,7 +267,7 @@ class DeploymentActorTest extends AkkaUnitTest with GroupCreation {
 
       val plan = DeploymentPlan("foo", origGroup, targetGroup, List(DeploymentStep(List(RestartApplication(appNew)))), Timestamp.now())
 
-      tracker.specInstancesSync(app.id) returns Seq.empty[Instance]
+      tracker.specInstancesSync(app.id, readAfterWrite = true) returns Seq.empty[Instance]
       queue.add(app, 2) returns Future.successful(Done)
 
       deploymentActor(managerProbe.ref, plan)

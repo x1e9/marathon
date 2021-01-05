@@ -690,7 +690,7 @@ class TaskReplaceActorTest extends AkkaUnitTest with Eventually {
       val otherApp = AppDefinition(id = AbsolutePathId("/some-other-app"), role = "*")
       val bad_instance = f.runningInstance(otherApp)
       val good_instance = f.runningInstance(app)
-      f.tracker.specInstancesSync(app.id) returns Seq(good_instance)
+      f.tracker.specInstancesSync(app.id, readAfterWrite = true) returns Seq(good_instance)
       ref ! HealthStatusResponse(Map(bad_instance.instanceId -> Seq(Health(bad_instance.instanceId).update(Healthy(null, null, null)))))
 
       eventually {
@@ -761,7 +761,7 @@ class TaskReplaceActorTest extends AkkaUnitTest with Eventually {
         map += (newInstances(i).instanceId -> Seq(Health(newInstances(i).instanceId).update(Healthy(null, null, null))))
       for (i <- 0 until newUnhealthy)
         map += (newInstances(i + newRunning).instanceId -> Seq(Health(newInstances(i + newRunning).instanceId).update(Unhealthy(null, null, null, ""))))
-      tracker.specInstancesSync(app.id) returns oldInstances.take(oldRunning) ++ newInstances.take(newRunning + newUnhealthy)
+      tracker.specInstancesSync(app.id, readAfterWrite = true) returns oldInstances.take(oldRunning) ++ newInstances.take(newRunning + newUnhealthy)
       ref ! HealthStatusResponse(map)
     }
 
