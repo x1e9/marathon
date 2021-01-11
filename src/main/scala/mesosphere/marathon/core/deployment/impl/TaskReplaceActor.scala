@@ -57,17 +57,25 @@ class TaskReplaceActor(
   def isHealthy(instance: Instance, healths: Map[Instance.Id, Seq[Health]]): Boolean = {
     val i_health = healths.find(_._1 == instance.instanceId)
     if (instance.hasConfiguredHealthChecks && i_health.isDefined)
-      return _isHealthy(i_health.get._2)
+      return _isHealthy(instance, i_health.get._2)
     else if (instance.hasConfiguredHealthChecks && !i_health.isDefined)
       return false
     else
       return instance.isRunning
   }
 
-  def _isHealthy(healths: Seq[Health]): Boolean = {
+  def _isHealthy(instance: Instance, healths: Seq[Health]): Boolean = {
     for (h <- healths)
-      if (!h.alive) return false
+      if (!h.alive && !isOutdatedHealth(instance, h)) return false // this is a workaround until MESOS-4592 is fixed
     return true
+  }
+
+  // A healthcheck status is outdated if the last success / failure timestamp
+  // is prior to the timestamp at which the task was staged at
+  def isOutdatedHealth(instance: Instance, health: Health): Boolean = {
+    val taskStagedAt = instance.appTask.status.stagedAt
+    return (health.lastSuccess.isDefined && health.lastSuccess.get.before(taskStagedAt)) ||
+      (health.lastFailure.isDefined && health.lastFailure.get.before(taskStagedAt))
   }
 
   def request_health_status(): Unit = {
