@@ -219,6 +219,16 @@ private[health] class HealthCheckActor(
     val newHealth = instanceHealth.newHealth
 
     logger.info(s"Received health result for app [${app.id}] version [${app.version}]: [$result]")
+
+    // Purge outdated health status for task associated with the instance.
+    // This avoids a bug with Mesos healthchecks where we keep the status for a
+    // dead task (in addition to the living one), thus sometimes leading
+    // Marathon to report the task / instance / app as unhealthy while
+    // everything is running correctly.
+    val healthOfInstanceId = healthByTaskId.find(_._1.instanceId == instanceId)
+    if (healthOfInstanceId.isDefined)
+      healthByTaskId.remove(healthOfInstanceId.get._1)
+
     healthByTaskId += (result.taskId -> instanceHealth.newHealth)
     appHealthCheckActor ! HealthCheckStatusChanged(ApplicationKey(app.id, app.version), healthCheck, newHealth)
 
