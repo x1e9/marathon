@@ -196,9 +196,6 @@ class MarathonSchedulerActor private (
   }
 
   def scaleRunSpecs(): Unit = {
-    // Check if runspecs in groupRepository are the old version (likely yes). Maybe runspec is updated
-    // in groupRepository only once deployment is finished, this is why we always restart an "old" version when
-    // we kill an instance during a deployment.
     groupRepository.root().foreach { root =>
       root.transitiveRunSpecs.foreach(spec => self ! ScaleRunSpec(spec.id))
     }
