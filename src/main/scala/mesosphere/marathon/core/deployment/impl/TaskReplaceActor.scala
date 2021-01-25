@@ -13,7 +13,7 @@ import mesosphere.marathon.core.instance.{Goal, GoalChangeReason, Instance}
 import mesosphere.marathon.core.launchqueue.LaunchQueue
 import mesosphere.marathon.core.readiness.ReadinessCheckExecutor
 import mesosphere.marathon.core.task.tracker.InstanceTracker
-import mesosphere.marathon.state.{RunSpec,Timestamp}
+import mesosphere.marathon.state.{RunSpec, Timestamp}
 
 import scala.async.Async.{async, await}
 import scala.collection.mutable
@@ -282,7 +282,7 @@ object TaskReplaceActor extends StrictLogging {
     val leftCapacity = math.max(0, maxCapacity - totalInstancesRunning)
     val instancesNotStartedYet = math.max(0, runSpec.instances - state.newInstances)
     val nrToStartImmediately = math.min(instancesNotStartedYet, leftCapacity)
-    logger.info(s"For maxCapacity ${maxCapacity}, leftCapacity ${leftCapacity} and still not started ${instancesNotStartedYet}, will start ${nrToStartImmediately} now!")
+    logger.info(s"For ${runSpec.id.toString} maxCapacity ${maxCapacity}, leftCapacity ${leftCapacity} and still not started ${instancesNotStartedYet}, will start ${nrToStartImmediately} now!")
     RestartStrategy(nrToKillImmediately = nrToKillImmediately, nrToStartImmediately = nrToStartImmediately, maxCapacity = maxCapacity)
   }
 }
