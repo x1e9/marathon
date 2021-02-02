@@ -228,8 +228,8 @@ object ResourceMatcher extends StrictLogging {
         // Add constraints to noOfferMatchReasons
         noOfferMatchReasons += NoOfferMatchReason.UnfulfilledConstraint
         logger.info(
-          s"Offer [${offer.getId.getValue}] with role [${offer.getAllocationInfo.getRole}]. Constraints for run spec [${runSpec.id}] not satisfied.\n" +
-            s"The conflicting constraints are: [${badConstraints.mkString(", ")}]"
+          s"Offer [${offer.getId.getValue}] with role [${offer.getAllocationInfo.getRole}]. Constraints for run spec [${runSpec.id}] not satisfied." +
+            s"The conflicting constraints are: [${badConstraints.mkString(", ").replaceAll("\n", " ")}]. Agent is ${offer.getHostname}"
         )
       }
 
