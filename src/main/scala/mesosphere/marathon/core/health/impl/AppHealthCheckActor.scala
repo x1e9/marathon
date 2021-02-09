@@ -5,7 +5,7 @@ import akka.actor.{Actor, Props}
 import akka.event.EventStream
 import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.event.InstanceHealthChanged
-import mesosphere.marathon.core.health.impl.AppHealthCheckActor.{AddHealthCheck, AppHealthCheckProxy, ApplicationKey, HealthCheckStatusChanged, PurgeHealthCheckStatuses, RemoveHealthCheck}
+import mesosphere.marathon.core.health.impl.AppHealthCheckActor.{AddHealthCheck, AppHealthCheckProxy, ApplicationKey, HealthCheckStatesRequest, HealthCheckStatesResponse, HealthCheckStatusChanged, PurgeHealthCheckStatuses, RemoveHealthCheck}
 import mesosphere.marathon.core.health.{Health, HealthCheck}
 import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.state.{AbsolutePathId, Timestamp}
@@ -28,6 +28,10 @@ object AppHealthCheckActor {
   case class InstanceKey(applicationKey: ApplicationKey, instanceId: Instance.Id)
 
   def props(eventBus: EventStream): Props = Props(new AppHealthCheckActor(eventBus))
+
+  case class HealthCheckStatesRequest(instance: Instance, health: Health, appId: AbsolutePathId)
+
+  case class HealthCheckStatesResponse(instance: Instance, health: Health, healths: Map[Instance.Id, Option[Boolean]])
 
   /**
     * Actor command adding an health check definition for a given application so that the actor knows which health check
@@ -82,6 +86,10 @@ object AppHealthCheckActor {
       */
     private[impl] val healthCheckStates: mutable.Map[InstanceKey, Map[HealthCheck, Option[Health]]] =
       mutable.Map.empty
+
+    def getHealthCheckStates(appId: AbsolutePathId): Map[Instance.Id, Option[Boolean]] = {
+      healthCheckStates.filterKeys(instanceKey => instanceKey.applicationKey.appId == appId).map { case (instanceKey, instanceHealthResults) => (instanceKey.instanceId, computeGlobalHealth(instanceHealthResults)) }.toMap
+    }
 
     /**
       * This method derives the instance healthiness from a list of health check statuses
@@ -218,6 +226,11 @@ class AppHealthCheckActor(eventBus: EventStream) extends Actor with StrictLoggin
   }
 
   override def receive: Receive = {
+    case HealthCheckStatesRequest(instance, health, appId) =>
+      val s = sender()
+      val healths = proxy.getHealthCheckStates(appId)
+      s ! HealthCheckStatesResponse(instance, health, healths)
+
     case AddHealthCheck(appKey, healthCheck) =>
       proxy.addHealthCheck(appKey, healthCheck)
 
