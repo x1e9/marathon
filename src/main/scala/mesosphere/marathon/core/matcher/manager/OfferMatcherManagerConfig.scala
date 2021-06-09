@@ -49,4 +49,18 @@ trait OfferMatcherManagerConfig extends ScallopConf {
     default = Some(1024),
     hidden = true
   )
+
+  /**
+    * This parameter controls the order of processing for offers present in the offers queue
+    * by setting this parameter to true, the unprocessed offers will be processed in FIFO order.
+    * The default behavior is FIFO.
+    */
+  lazy val queuedOffersFifo = toggle(
+    "queued_offers_fifo",
+    descrYes = "(Default) Marathon Offer Queue will work in FIFO",
+    descrNo = "(Default) Marathon Offer Queue will work in default behavior which is LIFO",
+    prefix = "deactivate_",
+    noshort = true,
+    default = Some(true))
+
 }
