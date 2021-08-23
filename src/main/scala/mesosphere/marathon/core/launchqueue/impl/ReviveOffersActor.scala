@@ -13,6 +13,12 @@ import mesosphere.marathon.core.launchqueue.impl.ReviveOffersStreamLogic.{IssueR
 import mesosphere.marathon.core.task.tracker.InstanceTracker
 import mesosphere.marathon.metrics.{Counter, Metrics}
 import org.apache.mesos.Protos.FrameworkInfo
+import org.apache.mesos.Protos.Request
+import org.apache.mesos.Protos.Resource
+import org.apache.mesos.Protos.Value.Type.SCALAR
+import org.apache.mesos.Protos.Value.Scalar
+
+import mesosphere.marathon.raml.Resources
 
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
@@ -55,6 +61,23 @@ class ReviveOffersActor(
     b.addAllRoles(roles.asJava)
     b.build
   }
+  private def requestWithResources(resources: Resources): Request = {
+    val b = Request.newBuilder;
+    b.addResources(
+      Resource.newBuilder.setName("cpus")
+        .setType(SCALAR)
+        .setScalar(Scalar.newBuilder().setValue(resources.cpus)))
+      .addResources(
+        Resource.newBuilder.setName("mem")
+          .setType(SCALAR)
+          .setScalar(Scalar.newBuilder().setValue(resources.mem)))
+      .addResources(
+        Resource.newBuilder.setName("disk")
+          .setType(SCALAR)
+          .setScalar(Scalar.newBuilder().setValue(resources.disk)))
+
+    b.build
+  }
 
   override def preStart(): Unit = {
     super.preStart()
@@ -72,14 +95,13 @@ class ReviveOffersActor(
       enableSuppress = enableSuppress,
       defaultMesosRole
     )
-
     val done: Future[Done] = initialFrameworkInfo.flatMap { frameworkInfo =>
       flattenedInstanceUpdates.map(Left(_))
         .merge(delayedConfigRefs.map(Right(_)))
         .via(suppressReviveFlow)
         .via(reviveSuppressMetrics)
         .runWith(Sink.foreach {
-          case UpdateFramework(roleState, _, _) =>
+          case UpdateFramework(roleState, _, _, minimalResourcesPerRole) =>
             driverHolder.driver.foreach { d =>
               val newInfo = frameworkInfoWithRoles(frameworkInfo, roleState.keys)
               val suppressedRoles = roleState.iterator
@@ -88,10 +110,16 @@ class ReviveOffersActor(
               d.updateFramework(newInfo, suppressedRoles.asJava)
             }
 
-          case IssueRevive(roles) =>
+          case IssueRevive(roles, minimalResourcesPerRole) =>
             driverHolder.driver.foreach { d =>
+              roles.foreach(role => {
+                val requests: List[Request] = List(requestWithResources(minimalResourcesPerRole.getOrElse(role, Resources(0, 0, 0, 0, 0))))
+                d.requestResources(requests.asJava);
+              })
               d.reviveOffers(roles.asJava)
+
             }
+
         })
     }
 
@@ -99,7 +127,7 @@ class ReviveOffersActor(
   }
 
   val reviveSuppressMetrics: Flow[RoleDirective, RoleDirective, NotUsed] = Flow[RoleDirective].map {
-    case directive @ UpdateFramework(newState, newlyRevived, newlySuppressed) =>
+    case directive @ UpdateFramework(newState, newlyRevived, newlySuppressed, minimalResourcesPerRole) =>
       newlyRevived.foreach { role =>
         logger.info(s"Role '${role}' newly revived via update framework call")
         reviveCountMetric.increment()
@@ -111,7 +139,7 @@ class ReviveOffersActor(
       }
       directive
 
-    case directive @ IssueRevive(roles) =>
+    case directive @ IssueRevive(roles, minimalResourcesPerRole) =>
       roles.foreach { role =>
         reviveCountMetric.increment()
         logger.info(s"Role '${role}' explicitly revived")

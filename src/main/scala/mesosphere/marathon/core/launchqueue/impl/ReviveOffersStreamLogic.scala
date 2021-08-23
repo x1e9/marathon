@@ -6,9 +6,11 @@ import akka.stream.OverflowStrategy
 import akka.stream.scaladsl.{Flow, Source}
 import com.typesafe.scalalogging.StrictLogging
 import mesosphere.marathon.core.instance.update.{InstanceChangeOrSnapshot, InstanceDeleted, InstanceUpdated, InstancesSnapshot}
-import mesosphere.marathon.core.launchqueue.impl.ReviveOffersState.Role
+import mesosphere.marathon.core.launchqueue.impl.ReviveOffersState.{OffersWantedInfo, Role}
+import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.state.RunSpecConfigRef
 import mesosphere.marathon.stream.{RateLimiterFlow, TimedEmitter}
+import mesosphere.marathon.raml.Resources
 
 import scala.concurrent.duration._
 
@@ -20,6 +22,7 @@ object ReviveOffersStreamLogic extends StrictLogging {
 
   case class NotDelayed(element: RunSpecConfigRef) extends DelayedStatus
 
+  var minimalResourcesPerRole: Map[Role, Resources] = Map();
   /**
     * Watches a stream of rate limiter updates and emits Active(configRef) when a configRef has an active backoff delay,
     * and Inactive(configRef) when it doesn't any longer.
@@ -73,10 +76,35 @@ object ReviveOffersStreamLogic extends StrictLogging {
     reviveStateFromInstancesAndDelays(defaultRole)
       .buffer(1, OverflowStrategy.dropHead) // While we are back-pressured, we drop older interim frames
       .via(RateLimiterFlow.apply(minReviveOffersInterval))
+      .map(l => findminimalResourcesPerRole(l))
       .map(_.roleReviveVersions)
       .via(reviveDirectiveFlow(enableSuppress))
-      .map(l => { logger.info(s"Issuing following suppress/revive directives: = ${l}"); l })
+      .map(l => { logger.info(s"Issuing following suppress/revive directives: = ${l} and offer wanted == ${OffersWanted}"); l })
       .via(reviveRepeaterWithTicks)
+  }
+
+  def findminimalResourcesPerRole(offersWanted: ReviveOffersState): ReviveOffersState = {
+    minimalResourcesPerRole = Map();
+    offersWanted.instancesWantingOffers.foreach(roleInfo => {
+      val role: String = roleInfo._1;
+      var actualMinimal = Resources(0.0, 0, 0, 0, 0);
+      var minCpus: Double = Double.MaxValue;
+      var minMem: Double = Double.MaxValue;
+      var minDisk: Double = Double.MaxValue;
+      val instances: Map[Instance.Id, OffersWantedInfo] = roleInfo._2;
+
+      instances.foreach(instance => {
+        val requiredResources: Resources = instance._2.resources;
+        minCpus = if (minCpus > requiredResources.cpus) requiredResources.cpus else minCpus;
+        minMem = if (minMem > requiredResources.mem) requiredResources.mem else minMem;
+        minDisk = if (minDisk > requiredResources.disk) requiredResources.disk else minDisk;
+        actualMinimal = Resources(minCpus, minMem, minDisk, 0, 0)
+      })
+
+      minimalResourcesPerRole = minimalResourcesPerRole + (role -> actualMinimal);
+    })
+
+    return offersWanted
   }
 
   def reviveDirectiveFlow(enableSuppress: Boolean): Flow[Map[Role, VersionedRoleState], RoleDirective, NotUsed] = {
@@ -118,7 +146,8 @@ object ReviveOffersStreamLogic extends StrictLogging {
         val updateFramework = UpdateFramework(
           newRoleState,
           newlyRevived = newState.keySet -- lastState.keySet,
-          newlySuppressed = Set.empty
+          newlySuppressed = Set.empty,
+          minimalResourcesPerRole = minimalResourcesPerRole
         )
         directives += updateFramework
       }
@@ -130,7 +159,7 @@ object ReviveOffersStreamLogic extends StrictLogging {
         .toSet
 
       if (needsExplicitRevive.nonEmpty)
-        directives += IssueRevive(needsExplicitRevive)
+        directives += IssueRevive(needsExplicitRevive, minimalResourcesPerRole)
 
       directives.result()
     }
@@ -170,7 +199,7 @@ object ReviveOffersStreamLogic extends StrictLogging {
         .collect { case (role, VersionedRoleState(version, OffersWanted)) if lastOffersWantedVersion(lastState, role).exists(_ < version) => role }.toSet
 
       if (rolesNeedingRevive.nonEmpty)
-        directives += IssueRevive(rolesNeedingRevive)
+        directives += IssueRevive(rolesNeedingRevive, minimalResourcesPerRole)
 
       directives.result()
 
@@ -215,7 +244,7 @@ object ReviveOffersStreamLogic extends StrictLogging {
         currentRoleState = updateFramework.roleState
         markRolesForRepeat(updateFramework.newlyRevived)
 
-      case IssueRevive(roles) =>
+      case IssueRevive(roles, minimalResourcesPerRole) =>
         logger.info(s"Issuing revive for roles $roles")
         markRolesForRepeat(roles) // set / reset the repeat delay
     }
@@ -238,7 +267,7 @@ object ReviveOffersStreamLogic extends StrictLogging {
         Nil
       } else {
         logger.info(s"Repeat revive for roles $rolesForReviveRepetition.")
-        List(IssueRevive(rolesForReviveRepetition))
+        List(IssueRevive(rolesForReviveRepetition, minimalResourcesPerRole))
       }
     }
   }
@@ -256,9 +285,10 @@ object ReviveOffersStreamLogic extends StrictLogging {
   case class UpdateFramework(
       roleState: Map[String, RoleOfferState],
       newlyRevived: Set[String],
-      newlySuppressed: Set[String]) extends RoleDirective
+      newlySuppressed: Set[String],
+      minimalResourcesPerRole: Map[Role, Resources] = Map.empty) extends RoleDirective
 
-  case class IssueRevive(roles: Set[String]) extends RoleDirective
+  case class IssueRevive(roles: Set[String], minimalResourcesPerRole: Map[Role, Resources] = Map.empty) extends RoleDirective
 
   case class VersionedRoleState(version: Long, roleState: RoleOfferState)
 

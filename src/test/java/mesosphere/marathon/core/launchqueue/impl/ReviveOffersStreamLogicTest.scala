@@ -13,6 +13,7 @@ import org.scalatest.Inside
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import mesosphere.marathon.raml.Resources
 
 class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
 
@@ -41,7 +42,7 @@ class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
 
       Then("An update framework event is issued with the role suppressed in response to the snapshot")
       inside(output.pull().futureValue) {
-        case Some(UpdateFramework(roleState, newlyRevived, newlySuppressed)) =>
+        case Some(UpdateFramework(roleState, newlyRevived, newlySuppressed, _)) =>
           roleState shouldBe Map("web" -> OffersNotWanted)
           newlyRevived shouldBe Set.empty
           newlySuppressed shouldBe Set.empty
@@ -54,7 +55,7 @@ class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
 
       Then("The revives from the instances get combined in to a single update framework call")
       inside(output.pull().futureValue) {
-        case Some(UpdateFramework(roleState, newlyRevived, newlySuppressed)) =>
+        case Some(UpdateFramework(roleState, newlyRevived, newlySuppressed, _)) =>
           roleState shouldBe Map("web" -> OffersWanted)
           newlyRevived shouldBe Set("web")
           newlySuppressed shouldBe Set.empty
@@ -62,7 +63,7 @@ class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
 
       And("the revive is eventually repeated")
       inside(output.pull().futureValue) {
-        case Some(IssueRevive(roles)) =>
+        case Some(IssueRevive(roles, _)) =>
           roles shouldBe Set("web")
       }
 
@@ -82,7 +83,7 @@ class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
         .futureValue
 
       inside(result) {
-        case Seq(UpdateFramework(roleState, newlyRevived, newlySuppressed)) =>
+        case Seq(UpdateFramework(roleState, newlyRevived, newlySuppressed, _)) =>
           roleState shouldBe Map("web" -> OffersWanted)
           newlyRevived shouldBe Set("web")
           newlySuppressed shouldBe Set.empty
@@ -97,7 +98,7 @@ class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
       logic.processRoleDirective(UpdateFramework(Map("role" -> OffersWanted), Set("role"), Set.empty))
 
       logic.handleTick() shouldBe Nil
-      logic.handleTick() shouldBe List(IssueRevive(Set("role")))
+      logic.handleTick() shouldBe List(IssueRevive(Set("role"), Map("web" -> Resources(0, 0, 0, 0, 0))))
     }
 
     "does not repeat revives for roles that become suppressed" in {
@@ -120,14 +121,14 @@ class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
       logic.handleTick() shouldBe Nil
 
       // First repeat for update framework
-      logic.handleTick() shouldBe List(IssueRevive(Set("role")))
+      logic.handleTick() shouldBe List(IssueRevive(Set("role"), Map("web" -> Resources(0, 0, 0, 0, 0))))
 
       // Revive was triggered
       logic.processRoleDirective(IssueRevive(Set("role")))
       logic.handleTick() shouldBe Nil
 
       // Second repeat for newly triggered revive
-      logic.handleTick() shouldBe List(IssueRevive(Set("role")))
+      logic.handleTick() shouldBe List(IssueRevive(Set("role"), Map("web" -> Resources(0, 0, 0, 0, 0))))
       logic.handleTick() shouldBe Nil
     }
   }
@@ -147,7 +148,7 @@ class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
         .futureValue
 
       inside(results) {
-        case Seq(UpdateFramework(roleState, newlyRevived, newlySuppressed)) =>
+        case Seq(UpdateFramework(roleState, newlyRevived, newlySuppressed, _)) =>
           roleState shouldBe Map("web" -> OffersNotWanted)
           newlyRevived shouldBe Set.empty
           newlySuppressed shouldBe Set.empty
@@ -163,7 +164,7 @@ class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
         .runWith(Sink.seq)
         .futureValue
       inside(results) {
-        case Seq(UpdateFramework(roleState, newlyRevived, newlySuppressed)) =>
+        case Seq(UpdateFramework(roleState, newlyRevived, newlySuppressed, _)) =>
           roleState shouldBe Map("web" -> OffersWanted)
           newlyRevived shouldBe Set("web")
           newlySuppressed shouldBe Set.empty
@@ -228,7 +229,7 @@ class ReviveOffersStreamLogicTest extends AkkaUnitTest with Inside {
         .futureValue
 
       inside(results) {
-        case Seq(UpdateFramework(roleState, newlyRevived, newlySuppressed)) =>
+        case Seq(UpdateFramework(roleState, newlyRevived, newlySuppressed, _)) =>
           roleState shouldBe Map("web" -> OffersNotWanted)
       }
     }

@@ -7,6 +7,7 @@ import mesosphere.marathon.core.instance.{Goal, Instance}
 import mesosphere.marathon.core.launchqueue.impl.ReviveOffersState.{OffersWantedInfo, OffersWantedReason, Role}
 import mesosphere.marathon.core.launchqueue.impl.ReviveOffersStreamLogic.VersionedRoleState
 import mesosphere.marathon.state.RunSpecConfigRef
+import mesosphere.marathon.raml.Resources
 
 /**
   * Holds the current state and defines the revive logic.
@@ -100,7 +101,8 @@ case class ReviveOffersState(
     OffersWantedInfo(
       version,
       if (shouldUnreserve(instance)) OffersWantedReason.CleaningUpReservations else OffersWantedReason.Launching,
-      instance.runSpec.configRef)
+      instance.runSpec.configRef,
+      instance.runSpec.resources)
   }
 
   /** @return this state with passed instance removed from [[instancesWantingOffers]]. */
@@ -171,7 +173,7 @@ object ReviveOffersState {
   private[impl] type Role = String
   def empty = ReviveOffersState(Map.empty, Set.empty, 0)
 
-  private[impl] case class OffersWantedInfo(version: Long, reason: OffersWantedReason, ref: RunSpecConfigRef)
+  private[impl] case class OffersWantedInfo(version: Long, reason: OffersWantedReason, ref: RunSpecConfigRef, resources: Resources)
 
   private[impl] sealed trait OffersWantedReason
 
