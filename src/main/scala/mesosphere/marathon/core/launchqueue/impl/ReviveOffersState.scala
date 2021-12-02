@@ -2,6 +2,7 @@ package mesosphere.marathon
 package core.launchqueue.impl
 
 import com.typesafe.scalalogging.StrictLogging
+import scala.util.Random
 import mesosphere.marathon.core.instance.update.InstancesSnapshot
 import mesosphere.marathon.core.instance.{Goal, Instance}
 import mesosphere.marathon.core.launchqueue.impl.ReviveOffersState.{OffersWantedInfo, OffersWantedReason, Role}
@@ -165,25 +166,25 @@ case class ReviveOffersState(
   }
 
   private def findMinimalResources(offersWantedInfos: List[OffersWantedInfo]): Resources = {
-
-    var actualMinimal = Resources(0, 0, 0, 0, 0);
-    var minCpus: Double = Double.MaxValue;
-    var minMem: Double = Double.MaxValue;
-    var minDisk: Double = Double.MaxValue;
-    var minGpus: Int = Int.MaxValue;
-    var minNetworkBandwidth: Int = Int.MaxValue;
+    var actualMinimal = Resources(Double.MaxValue, Double.MaxValue, Double.MaxValue, Int.MaxValue, Int.MaxValue)
     logger.debug(s"Scheduled Instances for launch are ${offersWantedInfos}")
 
-    offersWantedInfos.foreach(instance => {
-      val requiredResources: Resources = instance.resources;
-      minCpus = List(minCpus, requiredResources.cpus).min
-      minMem = List(minMem, requiredResources.mem).min
-      minDisk = List(minDisk, requiredResources.disk).min
-      minGpus = List(minGpus, requiredResources.gpus).min
-      minNetworkBandwidth = List(minNetworkBandwidth, requiredResources.networkBandwidth).min;
+    // There may be several minimums, since we consider several resources (cpu, mem, disk, gpu, network bandwidth).
+    // We shuffle the list of wanted offers to give a chance to all tasks to be scheduled if cluster capacity for one resource is too low.
+    // Note that the slave sorter feature in mesos favours small tasks over big ones; the latter may have difficulties to be scheduled
+    Random.shuffle(offersWantedInfos).foreach(instance => {
+      val requiredResources: Resources = instance.resources
+      if (requiredResources.cpus <= actualMinimal.cpus &&
+        requiredResources.mem <= actualMinimal.mem &&
+        requiredResources.disk <= actualMinimal.disk &&
+        requiredResources.networkBandwidth <= actualMinimal.networkBandwidth) {
+        actualMinimal = requiredResources
+      }
     })
 
-    Resources(minCpus, minMem, minDisk, minGpus, minNetworkBandwidth)
+    logger.debug(s"Minimal resources is: ${actualMinimal}")
+
+    actualMinimal
   }
 
   /** @return true if a instance has no active delay, or the instance requires clean up. */
