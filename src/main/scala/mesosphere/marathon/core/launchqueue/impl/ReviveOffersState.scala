@@ -28,10 +28,11 @@ case class ReviveOffersState(
   }
 
   private def copyBumpingVersion(
-    instancesWantingOffers: Map[Role, Map[Instance.Id, OffersWantedInfo]] = instancesWantingOffers,
-    activeDelays: Set[RunSpecConfigRef] = activeDelays): ReviveOffersState = {
+    newInstancesWantingOffers: Map[Role, Map[Instance.Id, OffersWantedInfo]] = instancesWantingOffers,
+    newActiveDelays: Set[RunSpecConfigRef] = activeDelays): ReviveOffersState = {
 
-    copy(instancesWantingOffers, activeDelays, version + 1)
+    logWantedOffers(newInstancesWantingOffers)
+    copy(newInstancesWantingOffers, newActiveDelays, version + 1)
   }
 
   /**
@@ -50,7 +51,7 @@ case class ReviveOffersState(
     val defaultRoleEntry: Map[Role, Map[Instance.Id, OffersWantedInfo]] = Map(defaultRole -> Map.empty)
 
     // Note - we take all known roles, whether offers are wanted or not, and create at least an empty map entry in the wantedInfo map
-    copyBumpingVersion(instancesWantingOffers = defaultRoleEntry ++ rolesWithOffersWantedData)
+    copyBumpingVersion(newInstancesWantingOffers = defaultRoleEntry ++ rolesWithOffersWantedData)
   }
 
   private def hasRecordOfInstanceWantingOffers(role: Role, instanceId: Instance.Id): Boolean = {
@@ -64,15 +65,15 @@ case class ReviveOffersState(
       case Some(wantedInfo) =>
         wantedInfo.reason match {
           case OffersWantedReason.Launching =>
-            logger.debug(s"Adding ${instanceId} to scheduled instances.")
+            logger.info(s"Adding ${instanceId} to scheduled instances.")
           case OffersWantedReason.CleaningUpReservations =>
-            logger.debug(s"$instanceId is terminal but has a reservation.")
+            logger.info(s"$instanceId is terminal but has a reservation.")
         }
         val newRoleOffersWanted = instancesWantingOffers.getOrElse(role, Map.empty) + (instanceId -> wantedInfo)
         instancesWantingOffers + (role -> newRoleOffersWanted)
       case None =>
         if (hasRecordOfInstanceWantingOffers(role, instanceId))
-          logger.debug(s"Removing ${instanceId} from instances wanting offers.")
+          logger.info(s"Removing ${instanceId} from instances wanting offers.")
         val newRoleOffersWanted = instancesWantingOffers.getOrElse(role, Map.empty) - instanceId
 
         /* we don't clean up empty entries on purpose; this allows us to continue to signal that at one point in time,
@@ -82,7 +83,7 @@ case class ReviveOffersState(
         instancesWantingOffers + (role -> newRoleOffersWanted)
     }
 
-    copyBumpingVersion(instancesWantingOffers = newInstancesWantingOffers)
+    copyBumpingVersion(newInstancesWantingOffers = newInstancesWantingOffers)
   }
 
   /** @return this state updated with an instance. */
@@ -131,13 +132,13 @@ case class ReviveOffersState(
               instanceId -> wantedInfo
         }
     }
-    copyBumpingVersion(instancesWantingOffers = bumpedVersions, activeDelays = activeDelays - ref)
+    copyBumpingVersion(newInstancesWantingOffers = bumpedVersions, newActiveDelays = activeDelays - ref)
   }
 
   /** @return this state with updated [[activeDelays]]. */
   def withDelay(ref: RunSpecConfigRef): ReviveOffersState = {
     logger.info(s"Marking $ref as actively delayed for suppress/revive")
-    copyBumpingVersion(activeDelays = activeDelays + ref)
+    copyBumpingVersion(newActiveDelays = activeDelays + ref)
   }
 
   /**
@@ -190,6 +191,14 @@ case class ReviveOffersState(
   /** @return true if a instance has no active delay, or the instance requires clean up. */
   private def launchAllowedOrCleanUpRequired(wantedInfo: OffersWantedInfo): Boolean = {
     wantedInfo.reason == OffersWantedReason.CleaningUpReservations || !activeDelays.contains(wantedInfo.ref)
+  }
+
+  private def logWantedOffers(update: Map[Role, Map[Instance.Id, OffersWantedInfo]]): Unit = {
+    update.keysIterator.foreach { role =>
+      val new_list = update.getOrElse(role, Map.empty).values.toList
+      val old_list = instancesWantingOffers.getOrElse(role, Map.empty).values.toList
+      logger.info(s"instancesWantingOffers for ${role} : ${old_list} -> ${new_list}")
+    }
   }
 }
 
