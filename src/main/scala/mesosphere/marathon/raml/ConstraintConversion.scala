@@ -11,6 +11,7 @@ trait ConstraintConversion {
       case ConstraintOperator.Like => Protos.Constraint.Operator.LIKE
       case ConstraintOperator.Unlike => Protos.Constraint.Operator.UNLIKE
       case ConstraintOperator.MaxPer => Protos.Constraint.Operator.MAX_PER
+      case ConstraintOperator.MaxPerRelative => Protos.Constraint.Operator.MAX_PER_RELATIVE
       case ConstraintOperator.Is => Protos.Constraint.Operator.IS
     }
 
@@ -47,6 +48,7 @@ trait ConstraintConversion {
       case Protos.Constraint.Operator.LIKE => ConstraintOperator.Like
       case Protos.Constraint.Operator.UNLIKE => ConstraintOperator.Unlike
       case Protos.Constraint.Operator.MAX_PER => ConstraintOperator.MaxPer
+      case Protos.Constraint.Operator.MAX_PER_RELATIVE => ConstraintOperator.MaxPerRelative
       case Protos.Constraint.Operator.IS => ConstraintOperator.Is
     }
     Constraint(c.getField, operator, if (c.hasValue) Some(c.getValue) else None)

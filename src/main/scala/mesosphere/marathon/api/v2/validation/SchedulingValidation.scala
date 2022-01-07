@@ -93,6 +93,21 @@ trait SchedulingValidation {
             } else {
               failure(ConstraintMaxPerRequiresInt)
             }
+          case MaxPerRelative =>
+            c.value match {
+              case None => failure(ConstraintMaxPerRelativeRequiresDouble)
+              case Some(i) => {
+                Try(i.toDouble) match {
+                  case util.Success(d) => {
+                    d match {
+                      case x if (0 <= x && x <= 1) => Success
+                      case _ => failure(ConstraintMaxPerRelativeRequiresDouble)
+                    }
+                  }
+                  case util.Failure(_) => failure(ConstraintMaxPerRelativeRequiresDouble)
+                }
+              }
+            }
           case Like | Unlike =>
             c.value.fold[Result] {
               failure(ConstraintLikeAnUnlikeRequireRegexp)
@@ -164,6 +179,7 @@ object SchedulingValidationMessages {
   val InvalidRegularExpression = "is not a valid regular expression"
   val ConstraintLikeAnUnlikeRequireRegexp = "LIKE and UNLIKE require a non-empty, regular expression value"
   val ConstraintMaxPerRequiresInt = "MAX_PER requires an integer value"
+  val ConstraintMaxPerRelativeRequiresDouble = "MAX_PER_RELATIVE requires a value in range [0,1] (for instance 0.12 or 0.75)"
   val ConstraintGroupByMustBeEmptyOrInt = "GROUP BY must define an integer value or else no value at all"
   val ConstraintUniqueDoesNotAcceptValue = "UNIQUE does not accept a value"
   val IllegalConstraintSpecification = "illegal constraint specification"

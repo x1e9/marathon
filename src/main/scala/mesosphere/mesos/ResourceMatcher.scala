@@ -221,7 +221,7 @@ object ResourceMatcher extends StrictLogging {
         inst.runSpecVersion >= runSpec.versionInfo.lastConfigChangeVersion
       }
       val badConstraints = runSpec.constraints.filterNot { constraint =>
-        Constraints.meetsConstraint(instances, offer, constraint)
+        Constraints.meetsConstraint(instances, offer, constraint, runSpec.instances)
       }
 
       if (badConstraints.nonEmpty) {

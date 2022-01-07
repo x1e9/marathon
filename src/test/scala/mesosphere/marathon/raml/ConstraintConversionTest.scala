@@ -30,6 +30,7 @@ class ConstraintConversionTest extends UnitTest {
       Constraint("foo", ConstraintOperator.Is, Some("test")),
       Constraint("@hostname", ConstraintOperator.Unique, None),
       Constraint("rack", ConstraintOperator.MaxPer, Some("3")),
+      Constraint("rack", ConstraintOperator.MaxPerRelative, Some("0.1")),
       Constraint("@hostname", ConstraintOperator.Unlike, Some("regex")),
       Constraint("@hostname", ConstraintOperator.Like, Some("regex")),
       Constraint("@hostname", ConstraintOperator.Cluster, None))

@@ -26,7 +26,8 @@ class ConstraintsTest extends UnitTest {
   case class meetConstraint(field: String, operator: Operator, value: String, placed: Seq[Placed] = Nil) extends Matcher[Offer] {
     override def apply(offer: Offer): MatchResult = {
       val constraint = makeConstraint(field, operator, value)
-      val matched = Constraints.meetsConstraint(placed, offer, constraint)
+      val targetInstancesCount = -1
+      val matched = Constraints.meetsConstraint(placed, offer, constraint, targetInstancesCount)
       val (offerReader, placedReader) = Constraints.readerForField(field)
       val offerValue = offerReader(offer)
       val placedValues = placed map placedReader
@@ -293,7 +294,8 @@ class ConstraintsTest extends UnitTest {
       val groupByFreshHostMet = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host1", attributes),
-        groupByHost)
+        groupByHost,
+        4)
 
       assert(groupByFreshHostMet, "Should be able to schedule in fresh host.")
 
@@ -302,14 +304,16 @@ class ConstraintsTest extends UnitTest {
       val groupByHostMet = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host1", attributes),
-        groupByHost)
+        groupByHost,
+        4)
 
       assert(!groupByHostMet, "Should not meet group-by-host constraint.")
 
       val groupByHostMet2 = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host2", attributes),
-        groupByHost)
+        groupByHost,
+        4)
 
       assert(groupByHostMet2, "Should meet group-by-host constraint.")
 
@@ -318,7 +322,8 @@ class ConstraintsTest extends UnitTest {
       val groupByHostMet3 = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host1", attributes),
-        groupByHost)
+        groupByHost,
+        4)
 
       assert(groupByHostMet3, "Should meet group-by-host constraint.")
 
@@ -327,14 +332,16 @@ class ConstraintsTest extends UnitTest {
       val groupByHostNotMet = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host1", attributes),
-        groupByHost)
+        groupByHost,
+        4)
 
       assert(!groupByHostNotMet, "Should not meet group-by-host constraint.")
 
       val groupByHostMet4 = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host3", attributes),
-        groupByHost)
+        groupByHost,
+        4)
 
       assert(groupByHostMet4, "Should meet group-by-host constraint.")
 
@@ -343,21 +350,24 @@ class ConstraintsTest extends UnitTest {
       val groupByHostNotMet2 = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host1", attributes),
-        groupByHost)
+        groupByHost,
+        4)
 
       assert(!groupByHostNotMet2, "Should not meet group-by-host constraint.")
 
       val groupByHostMet5 = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host3", attributes),
-        groupByHost)
+        groupByHost,
+        4)
 
       assert(groupByHostMet5, "Should meet group-by-host constraint.")
 
       val groupByHostMet6 = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host2", attributes),
-        groupByHost)
+        groupByHost,
+        4)
 
       assert(groupByHostMet6, "Should meet group-by-host constraint.")
     }
@@ -375,7 +385,8 @@ class ConstraintsTest extends UnitTest {
       val maxPerFreshHostMet = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host1"),
-        maxPerHost)
+        maxPerHost,
+        3)
 
       assert(maxPerFreshHostMet, "Should be able to schedule in fresh host.")
 
@@ -384,7 +395,8 @@ class ConstraintsTest extends UnitTest {
       val maxPerHostMet = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host1"),
-        maxPerHost)
+        maxPerHost,
+        3)
 
       assert(maxPerHostMet, "Should meet max-per-host constraint.")
 
@@ -393,7 +405,8 @@ class ConstraintsTest extends UnitTest {
       val maxPerHostMet2 = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host2"),
-        maxPerHost)
+        maxPerHost,
+        3)
 
       assert(maxPerHostMet2, "Should meet max-per-host constraint.")
 
@@ -402,7 +415,8 @@ class ConstraintsTest extends UnitTest {
       val maxPerHostMet3 = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host1"),
-        maxPerHost)
+        maxPerHost,
+        3)
 
       assert(!maxPerHostMet3, "Should not meet max-per-host constraint.")
 
@@ -411,9 +425,114 @@ class ConstraintsTest extends UnitTest {
       val maxPerHostMet4 = Constraints.meetsConstraint(
         groupHost,
         makeOffer("host3"),
-        maxPerHost)
+        maxPerHost,
+        3)
 
       assert(maxPerHostMet4, "Should meet max-per-host constraint.")
+    }
+
+    "RackMaxPerRelativeConstraintsWithOddNumberOfInstances" in {
+      val appId = AbsolutePathId("/test")
+      val instance1_rack1 = makeInstance(appId, attributes = s"${rackIdField}:1.0")
+      val instance2_rack2 = makeInstance(appId, attributes = s"${rackIdField}:2.0")
+
+      var groupRack = Seq.empty[Instance]
+
+      val groupByRack = makeConstraint(rackIdField, MAX_PER_RELATIVE, "0.5")
+      val targetInstanceCount = 3
+
+      val maxPerFreshRackMet1 = Constraints.meetsConstraint(
+        groupRack,
+        makeOffer("foohost", s"foo:bar;${rackIdField}:1"),
+        groupByRack,
+        targetInstanceCount)
+
+      assert(maxPerFreshRackMet1, "Should be able to schedule in fresh rack 1.")
+
+      groupRack ++= Set(instance1_rack1)
+
+      val maxPerFreshRackMet2 = Constraints.meetsConstraint(
+        groupRack,
+        makeOffer("foohost", s"foo:bar;${rackIdField}:2"),
+        groupByRack,
+        targetInstanceCount)
+
+      assert(maxPerFreshRackMet2, "Should be able to schedule in fresh rack 2.")
+
+      groupRack ++= Set(instance2_rack2)
+
+      val maxPerRackNotMet3 = Constraints.meetsConstraint(
+        groupRack,
+        makeOffer("foohost", s"foo:bar;${rackIdField}:1"),
+        groupByRack,
+        targetInstanceCount)
+
+      assert(!maxPerRackNotMet3, "Should not meet max_per_relative constraint on rack 1.")
+
+      val maxPerRackNotMet4 = Constraints.meetsConstraint(
+        groupRack,
+        makeOffer("foohost", s"foo:bar;${rackIdField}:2"),
+        groupByRack,
+        targetInstanceCount)
+
+      assert(!maxPerRackNotMet4, "Should not meet max_per_relative constraint on rack 2.")
+    }
+
+    "RackMaxPerRelativeConstraintsWithEvenNumberOfInstances" in {
+      val appId = AbsolutePathId("/test")
+      val instance1_rack1 = makeInstance(appId, attributes = s"${rackIdField}:1.0")
+      val instance2_rack2 = makeInstance(appId, attributes = s"${rackIdField}:2.0")
+
+      var groupRack = Seq.empty[Instance]
+
+      val groupByRack = makeConstraint(rackIdField, MAX_PER_RELATIVE, "0.5")
+      val targetInstanceCount = 4
+
+      val maxPerFreshRackMet1 = Constraints.meetsConstraint(
+        groupRack,
+        makeOffer("foohost", s"foo:bar;${rackIdField}:1"),
+        groupByRack,
+        targetInstanceCount)
+
+      assert(maxPerFreshRackMet1, "Should be able to schedule in fresh rack 1.")
+
+      groupRack ++= Set(instance1_rack1)
+
+      val maxPerFreshRackMet2 = Constraints.meetsConstraint(
+        groupRack,
+        makeOffer("foohost", s"foo:bar;${rackIdField}:2"),
+        groupByRack,
+        targetInstanceCount)
+
+      assert(maxPerFreshRackMet2, "Should be able to schedule in fresh rack 2.")
+
+      groupRack ++= Set(instance2_rack2)
+
+      val maxPerRackMet3 = Constraints.meetsConstraint(
+        groupRack,
+        makeOffer("foohost", s"foo:bar;${rackIdField}:1"),
+        groupByRack,
+        targetInstanceCount)
+
+      assert(maxPerRackMet3, "Should be able to schedule in rack 1.")
+
+      groupRack ++= Set(instance1_rack1)
+
+      val maxPerRackNotMet4 = Constraints.meetsConstraint(
+        groupRack,
+        makeOffer("foohost", s"foo:bar;${rackIdField}:1"),
+        groupByRack,
+        targetInstanceCount)
+
+      assert(!maxPerRackNotMet4, "Should not meet max_per_relative constraint on rack 1.")
+
+      val maxPerRackMet5 = Constraints.meetsConstraint(
+        groupRack,
+        makeOffer("foohost", s"foo:bar;${rackIdField}:2"),
+        groupByRack,
+        targetInstanceCount)
+
+      assert(maxPerRackMet5, "Should meet max_per_relative constraint on rack 2.")
     }
 
     "RackMaxPerConstraints" in {
@@ -428,7 +547,8 @@ class ConstraintsTest extends UnitTest {
       val maxPerFreshRackMet1 = Constraints.meetsConstraint(
         groupRack,
         makeOffer("foohost", s"foo:bar;${rackIdField}:1"),
-        groupByRack)
+        groupByRack,
+        2)
 
       assert(maxPerFreshRackMet1, "Should be able to schedule in fresh rack 1.")
 
@@ -437,7 +557,8 @@ class ConstraintsTest extends UnitTest {
       val maxPerFreshRackMet2 = Constraints.meetsConstraint(
         groupRack,
         makeOffer("foohost", s"foo:bar;${rackIdField}:2"),
-        groupByRack)
+        groupByRack,
+        2)
 
       assert(maxPerFreshRackMet2, "Should be able to schedule in fresh rack 2.")
 
@@ -446,7 +567,8 @@ class ConstraintsTest extends UnitTest {
       val maxPerRackMet3 = Constraints.meetsConstraint(
         groupRack,
         makeOffer("foohost", s"foo:bar;${rackIdField}:1"),
-        groupByRack)
+        groupByRack,
+        2)
 
       assert(maxPerRackMet3, "Should be able to schedule in rack 1.")
 
@@ -455,7 +577,8 @@ class ConstraintsTest extends UnitTest {
       val maxPerRackNotMet4 = Constraints.meetsConstraint(
         groupRack,
         makeOffer("foohost", s"foo:bar;${rackIdField}:1"),
-        groupByRack)
+        groupByRack,
+        2)
 
       assert(!maxPerRackNotMet4, "Should not meet max_per constraint on rack 1.")
     }
@@ -480,145 +603,169 @@ class ConstraintsTest extends UnitTest {
       val likeVersionNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the cluster
         makeOffer("foohost", "jdk:6"), // slave attributes
-        jdk7ConstraintLike)
+        jdk7ConstraintLike,
+        4)
       assert(!likeVersionNotMet, "Should not meet like-version constraints.")
 
       val likeVersionMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the cluster
         makeOffer("foohost", "jdk:7"), // slave attributes
-        jdk7ConstraintLike)
+        jdk7ConstraintLike,
+        4)
       assert(likeVersionMet, "Should meet like-version constraints.")
 
       val clusterVersionNotMet = Constraints.meetsConstraint(
         Seq(instance2_rack1), // list of tasks register in the cluster
         makeOffer("foohost", "jdk:6"), // slave attributes
-        jdk7ConstraintCluster)
+        jdk7ConstraintCluster,
+        4)
       assert(!clusterVersionNotMet, "Should not meet cluster-version constraints.")
 
       val clusterVersionMet = Constraints.meetsConstraint(
         Seq(instance2_rack1), // list of tasks register in the cluster
         makeOffer("foohost", "jdk:7"), // slave attributes
-        jdk7ConstraintCluster)
+        jdk7ConstraintCluster,
+        4)
       assert(clusterVersionMet, "Should meet cluster-version constraints.")
 
       val likeNoAttributeNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the cluster
         makeOffer("foohost", ""), // no slave attribute
-        jdk7ConstraintLike)
+        jdk7ConstraintLike,
+        4)
       assert(!likeNoAttributeNotMet, "Should not meet like-no-attribute constraints.")
 
       val unlikeVersionNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the unlike
         makeOffer("foohost", "jdk:7"), // slave attributes
-        jdk7ConstraintUnlike)
+        jdk7ConstraintUnlike,
+        4)
       assert(!unlikeVersionNotMet, "Should not meet unlike-version constraints.")
 
       val unlikeVersionMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the unlike
         makeOffer("foohost", "jdk:6"), // slave attributes
-        jdk7ConstraintUnlike)
+        jdk7ConstraintUnlike,
+        4)
       assert(unlikeVersionMet, "Should meet unlike-version constraints.")
 
       val unlikeNoAttributeNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the unlike
         makeOffer("foohost", ""), // no slave attribute
-        jdk7ConstraintUnlike)
+        jdk7ConstraintUnlike,
+        4)
       assert(unlikeNoAttributeNotMet, "Should meet unlike-no-attribute constraints.")
 
       val likeRangeVersionNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the cluster
         makeOffer("foohost", "jdk:[5-7]"), // slave attributes
-        jdk7ConstraintLikeRange)
+        jdk7ConstraintLikeRange,
+        4)
       assert(!likeRangeVersionNotMet, "Should not meet like-range-version constraints.")
 
       val likeRangeVersionMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the cluster
         makeOffer("foohost", "jdk:[6-7]"), // slave attributes
-        jdk7ConstraintLikeRange)
+        jdk7ConstraintLikeRange,
+        4)
       assert(likeRangeVersionMet, "Should meet like-range-version constraints.")
 
       val clusterRangeVersionNotMet = Constraints.meetsConstraint(
         Seq(instance3_rack1), // list of tasks register in the cluster
         makeOffer("foohost", "jdk:[5-7]"), // slave attributes
-        jdk7ConstraintClusterRange)
+        jdk7ConstraintClusterRange,
+        4)
       assert(!clusterRangeVersionNotMet, "Should not meet cluster-range-version constraints.")
 
       val clusterRangeVersionMet = Constraints.meetsConstraint(
         Seq(instance3_rack1), // list of tasks register in the cluster
         makeOffer("foohost", "jdk:[6-7]"), // slave attributes
-        jdk7ConstraintClusterRange)
+        jdk7ConstraintClusterRange,
+        4)
       assert(clusterRangeVersionMet, "Should meet cluster-range-version constraints.")
 
       val likeRangeNoAttributeNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the cluster
         makeOffer("foohost", ""), // no slave attribute
-        jdk7ConstraintLikeRange)
+        jdk7ConstraintLikeRange,
+        4)
       assert(!likeRangeNoAttributeNotMet, "Should not meet like-range-no-attribute constraints.")
 
       val unlikeRangeVersionNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the unlikeRange
         makeOffer("foohost", "jdk:[6-7]"), // slave attributes
-        jdk7ConstraintUnlikeRange)
+        jdk7ConstraintUnlikeRange,
+        4)
       assert(!unlikeRangeVersionNotMet, "Should not meet unlike-range-version constraints.")
 
       val unlikeRangeVersionMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the unlikeRange
         makeOffer("foohost", "jdk:5-7"), // slave attributes
-        jdk7ConstraintUnlikeRange)
+        jdk7ConstraintUnlikeRange,
+        4)
       assert(unlikeRangeVersionMet, "Should meet unlike-range-version constraints.")
 
       val unlikeRangeNoAttributeNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the unlikeRange
         makeOffer("foohost", ""), // no slave attribute
-        jdk7ConstraintUnlikeRange)
+        jdk7ConstraintUnlikeRange,
+        4)
       assert(unlikeRangeNoAttributeNotMet, "Should meet unlike-range-no-attribute constraints.")
 
       val likeSetVersionNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the cluster
         makeOffer("foohost", "gpu:{2,1}"), // slave attributes
-        jdk7ConstraintLikeSet)
+        jdk7ConstraintLikeSet,
+        4)
       assert(!likeSetVersionNotMet, "Should not meet like-set-version constraints.")
 
       val likeSetVersionMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the cluster
         makeOffer("foohost", "gpu:{1,0}"), // slave attributes
-        jdk7ConstraintLikeSet)
+        jdk7ConstraintLikeSet,
+        4)
       assert(likeSetVersionMet, "Should meet like-set-version constraints.")
 
       val clusterSetVersionNotMet = Constraints.meetsConstraint(
         Seq(instance4_rack1), // list of tasks register in the cluster
         makeOffer("foohost", "jdk:{2,1}"), // slave attributes
-        jdk7ConstraintClusterSet)
+        jdk7ConstraintClusterSet,
+        4)
       assert(!clusterSetVersionNotMet, "Should not meet cluster-set-version constraints.")
 
       val clusterSetVersionMet = Constraints.meetsConstraint(
         Seq(instance4_rack1), // list of tasks register in the cluster
         makeOffer("foohost", "gpu:{0,1}"), // slave attributes
-        jdk7ConstraintClusterSet)
+        jdk7ConstraintClusterSet,
+        4)
       assert(clusterSetVersionMet, "Should meet cluster-set-version constraints.")
 
       val likeSetNoAttributeNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the cluster
         makeOffer("foohost", ""), // no slave attribute
-        jdk7ConstraintLikeSet)
+        jdk7ConstraintLikeSet,
+        4)
       assert(!likeSetNoAttributeNotMet, "Should not meet like-set-no-attribute constraints.")
 
       val unlikeSetVersionNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the unlikeset
         makeOffer("foohost", "gpu:{0,1}"), // slave attributes
-        jdk7ConstraintUnlikeSet)
+        jdk7ConstraintUnlikeSet,
+        4)
       assert(!unlikeSetVersionNotMet, "Should not meet unlike-set-version constraints.")
 
       val unlikeSetVersionMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the unlikeset
         makeOffer("foohost", "gpu:{1,2}"), // slave attributes
-        jdk7ConstraintUnlikeSet)
+        jdk7ConstraintUnlikeSet,
+        4)
       assert(unlikeSetVersionMet, "Should meet unlike-set-version constraints.")
 
       val unlikeSetNoAttributeNotMet = Constraints.meetsConstraint(
         freshRack, // list of tasks register in the unlikeset
         makeOffer("foohost", ""), // no slave attribute
-        jdk7ConstraintUnlikeSet)
+        jdk7ConstraintUnlikeSet,
+        4)
       assert(unlikeSetNoAttributeNotMet, "Should meet unlike-set-no-attribute constraints.")
     }
 
@@ -629,8 +776,8 @@ class ConstraintsTest extends UnitTest {
         val offerRegion2 = makeOffer(hostnameField, "", Some(MarathonTestHelper.newDomainInfo("region2", "zone")))
         val instanceOnRegion1 = makeInstance(AbsolutePathId("/test"), host = hostnameField, region = Some("region1"), zone = Some("zone1"))
 
-        Constraints.meetsConstraint(Seq(instanceOnRegion1), offerRegion1, regionConstraintUnique) shouldBe false
-        Constraints.meetsConstraint(Seq(instanceOnRegion1), offerRegion2, regionConstraintUnique) shouldBe true
+        Constraints.meetsConstraint(Seq(instanceOnRegion1), offerRegion1, regionConstraintUnique, 1) shouldBe false
+        Constraints.meetsConstraint(Seq(instanceOnRegion1), offerRegion2, regionConstraintUnique, 1) shouldBe true
       }
 
       "apply constraints when *zone is specified" in {
@@ -639,8 +786,8 @@ class ConstraintsTest extends UnitTest {
         val offerZone2 = makeOffer(hostnameField, "", Some(MarathonTestHelper.newDomainInfo("region", "zone2")))
         val instanceOnZone1 = makeInstance(AbsolutePathId("/test"), host = hostnameField, region = Some("region"), zone = Some("zone1"))
 
-        Constraints.meetsConstraint(Seq(instanceOnZone1), offerZone1, zoneConstraintUnique) shouldBe false
-        Constraints.meetsConstraint(Seq(instanceOnZone1), offerZone2, zoneConstraintUnique) shouldBe true
+        Constraints.meetsConstraint(Seq(instanceOnZone1), offerZone1, zoneConstraintUnique, 1) shouldBe false
+        Constraints.meetsConstraint(Seq(instanceOnZone1), offerZone2, zoneConstraintUnique, 1) shouldBe true
       }
     }
   }

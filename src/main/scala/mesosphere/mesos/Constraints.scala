@@ -87,7 +87,7 @@ object Constraints extends StrictLogging {
   private[mesos] val MesosRangeValue = "\\[(.+)\\]".r
   private[mesos] val MesosScalarValue = "([0-9]+(?:\\.[0-9]+)?)".r
 
-  private final class ConstraintsChecker(allPlaced: Seq[Placed], offer: Offer, constraint: Constraint) {
+  private final class ConstraintsChecker(allPlaced: Seq[Placed], offer: Offer, constraint: Constraint, targetInstanceCount: Int) {
     val constraintValue = constraint.getValue
     def constraintValueAsScalar: Option[Double] = constraintValue match {
       case MesosScalarValue(v) => Some(v.toDouble)
@@ -133,6 +133,13 @@ object Constraints extends StrictLogging {
       groupedTasks.find(_._1.contains(offerValue)).forall(_._2 < maxCount)
     }
 
+    private def checkMaxPerRelative(offerValue: String, maxRelative: Double, groupFunc: (Placed) => Option[String]): Boolean = {
+      // Group tasks by the constraint value, and calculate the task count of each group
+      val groupedTasks = allPlaced.groupBy(groupFunc).map { case (k, v) => k -> v.size }
+      val maxCount = (maxRelative * targetInstanceCount).toInt
+      groupedTasks.find(_._1.contains(offerValue)).forall(_._2 < maxCount)
+    }
+
     private def checkCluster(offerValue: String, placedValue: Placed => Option[String]) =
       if (constraintValue.isEmpty)
         // If no placements are made, then accept (and make this offerValue) the value on which all future tasks are
@@ -156,6 +163,7 @@ object Constraints extends StrictLogging {
             case Operator.UNIQUE => checkUnique(maybeOfferValue, placedValue)
             case Operator.GROUP_BY => checkGroupBy(offerValue, placedValue)
             case Operator.MAX_PER => checkMaxPer(offerValue, constraintValue.toInt, placedValue)
+            case Operator.MAX_PER_RELATIVE => checkMaxPerRelative(offerValue, constraintValue.toDouble, placedValue)
             case Operator.CLUSTER => checkCluster(offerValue, placedValue)
             case Operator.IS => offerValue == constraintValueAsScalar.fold(constraintValue)(decimalFormatter.format(_))
           }
@@ -182,8 +190,8 @@ object Constraints extends StrictLogging {
       }
   }
 
-  def meetsConstraint(allPlaced: Seq[Placed], offer: Offer, constraint: Constraint): Boolean =
-    new ConstraintsChecker(allPlaced, offer, constraint).isMatch
+  def meetsConstraint(allPlaced: Seq[Placed], offer: Offer, constraint: Constraint, targetInstanceCount: Int): Boolean =
+    new ConstraintsChecker(allPlaced, offer, constraint, targetInstanceCount).isMatch
 
   /**
     * Select instances to kill while maintaining the constraints of the application definition.
