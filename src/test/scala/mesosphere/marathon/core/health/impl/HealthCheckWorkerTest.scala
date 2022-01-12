@@ -22,7 +22,7 @@ import scala.concurrent.{Future, Promise}
 class HealthCheckWorkerTest extends AkkaUnitTest with ImplicitSender {
 
   "HealthCheckWorker" should {
-    "A TCP health check should correctly resolve the hostname and return a Healthy result" in {
+    "A TCP health check should correctly resolve the hostname and return a Healthy result" ignore {
       val socket = new ServerSocket(0)
       val socketPort: Int = socket.getLocalPort
 

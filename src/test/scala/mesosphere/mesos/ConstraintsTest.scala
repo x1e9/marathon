@@ -438,7 +438,7 @@ class ConstraintsTest extends UnitTest {
 
       var groupRack = Seq.empty[Instance]
 
-      val groupByRack = makeConstraint(rackIdField, MAX_PER_RELATIVE, "0.5")
+      val groupByRack = makeConstraint(rackIdField, MAX_PER_RELATIVE, "0.315")
       val targetInstanceCount = 3
 
       val maxPerFreshRackMet1 = Constraints.meetsConstraint(

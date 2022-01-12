@@ -136,7 +136,7 @@ object Constraints extends StrictLogging {
     private def checkMaxPerRelative(offerValue: String, maxRelative: Double, groupFunc: (Placed) => Option[String]): Boolean = {
       // Group tasks by the constraint value, and calculate the task count of each group
       val groupedTasks = allPlaced.groupBy(groupFunc).map { case (k, v) => k -> v.size }
-      val maxCount = (maxRelative * targetInstanceCount).toInt
+      val maxCount = (maxRelative * targetInstanceCount)
       groupedTasks.find(_._1.contains(offerValue)).forall(_._2 < maxCount)
     }
 
