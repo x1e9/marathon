@@ -168,7 +168,7 @@ case class ReviveOffersState(
 
   private def findMinimalResources(offersWantedInfos: List[OffersWantedInfo]): Resources = {
     var actualMinimal = Resources(Double.MaxValue, Double.MaxValue, Double.MaxValue, Int.MaxValue, Int.MaxValue)
-    logger.debug(s"Scheduled Instances for launch are ${offersWantedInfos}")
+    logger.info(s"Scheduled Instances for launch are ${offersWantedInfos}")
 
     // There may be several minimums, since we consider several resources (cpu, mem, disk, gpu, network bandwidth).
     // We shuffle the list of wanted offers to give a chance to all tasks to be scheduled if cluster capacity for one resource is too low.
@@ -183,7 +183,7 @@ case class ReviveOffersState(
       }
     })
 
-    logger.debug(s"Minimal resources is: ${actualMinimal}")
+    logger.info(s"Minimal resources is: ${actualMinimal}")
 
     actualMinimal
   }
