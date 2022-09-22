@@ -19,6 +19,10 @@ object ScalingProposition extends StrictLogging {
     killSelection: KillSelection,
     runSpecId: AbsolutePathId): ScalingProposition = {
 
+    val instancesRunning: scala.collection.immutable.Seq[mesosphere.marathon.core.instance.Instance] = instances
+      .filter(_.tasksMap.size != 0)
+      .filter(_.state.condition != UnreachableInactive)
+
     val instancesGoalRunning: Map[Instance.Id, Instance] = instances
       .filter(_.state.goal == Goal.Running)
       .filter(_.state.condition != UnreachableInactive)
@@ -30,7 +34,7 @@ object ScalingProposition extends StrictLogging {
         toDecommissionMap.contains(instanceId)
     }
     // overall number of tasks that need to be killed
-    val decommissionCount = math.max(instancesGoalRunning.size - scaleTo, sentencedAndRunningMap.size)
+    val decommissionCount = math.max(instancesRunning.size - scaleTo, sentencedAndRunningMap.size)
     // tasks that should be killed to meet constraints – pass notSentenced & consider the sentenced 'already killed'
     val killToMeetConstraints = meetConstraints(
       notSentencedAndRunningMap.values.to[Seq],

@@ -219,6 +219,24 @@ class ScalingPropositionTest extends UnitTest {
     }
   }
 
+  "Removing tasks is not based on goals" should {
+    "not generate decommission" in {
+      var f = new Fixture
+      val t1 = f.createInstance(1)
+      val t2 = f.createUnscheduledInstance()
+      val t3 = f.createUnscheduledInstance()
+      val proposition = ScalingProposition.propose(
+        instances = Seq(t1, t2, t3),
+        toDecommission = f.noTasks,
+        meetConstraints = f.noConstraintsToMeet,
+        scaleTo = 1,
+        killSelection = KillSelection.DefaultKillSelection,
+        f.appId
+      )
+      proposition.toDecommission.nonEmpty shouldBe false
+    }
+  }
+
   "ScalingProposition.sortByConditionAndDate" when {
     "sorting a unreachable, unhealthy, running, staging and healthy tasks" should {
       val f = new Fixture
@@ -307,6 +325,10 @@ class ScalingPropositionTest extends UnitTest {
       val instance = TestInstanceBuilder.newBuilder(appId).addTaskStarting(since).getInstance()
       val state = instance.state.copy(condition = Condition.Starting, since = since)
       instance.copy(state = state)
+    }
+
+    def createUnscheduledInstance(): Instance = {
+      TestInstanceBuilder.newBuilder(appId).getInstance()
     }
 
     def noConstraintsToMeet(running: Seq[Instance], killCount: Int) = // linter:ignore:UnusedParameter
